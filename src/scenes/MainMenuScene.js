@@ -11,6 +11,9 @@ export class MainMenuScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     const saveData = SaveSystem.load();
 
+    // Unlock audio on any user interaction with the game
+    this.input.on('pointerdown', () => SoundManager.unlock(), this);
+
     // Background
     this.add
       .tileSprite(0, 0, width, height, 'mountain-bg')
@@ -68,6 +71,7 @@ export class MainMenuScene extends Phaser.Scene {
         btn.setStyle({ backgroundColor: '#335577' });
       });
       btn.on('pointerdown', () => {
+        SoundManager.unlock();
         SoundManager.buttonClick();
         this.scene.start(scene);
       });
