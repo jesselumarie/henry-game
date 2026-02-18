@@ -1,37 +1,74 @@
 let audioCtx = null;
 let masterGain = null;
 let muted = false;
-let unlocked = false;
+let contextResumed = false;
 
 function ensureContext() {
-  try {
-    if (!audioCtx) {
+  if (!audioCtx) {
+    try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
       masterGain.gain.value = 0.5;
       masterGain.connect(audioCtx.destination);
+      console.log('[Sound] AudioContext created, state:', audioCtx.state);
+    } catch (e) {
+      console.warn('[Sound] Failed to create AudioContext:', e);
+      return false;
     }
-    return true;
-  } catch (e) {
-    return false;
   }
-}
-
-function resumeContext() {
-  if (!ensureContext()) return false;
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  unlocked = true;
   return true;
 }
 
-function isReady() {
-  return audioCtx && unlocked && !muted;
+function tryResume() {
+  if (!ensureContext()) return;
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      contextResumed = true;
+      console.log('[Sound] AudioContext resumed successfully');
+    }).catch((e) => {
+      console.warn('[Sound] AudioContext resume failed:', e);
+    });
+  } else if (audioCtx.state === 'running') {
+    contextResumed = true;
+  }
+}
+
+// Register a direct DOM listener to unlock audio on the very first user gesture.
+// This MUST be a real DOM event (not Phaser's input system) for browsers to allow resume().
+function registerUnlockListeners() {
+  const unlockHandler = () => {
+    console.log('[Sound] DOM user gesture detected, unlocking audio...');
+    tryResume();
+    if (contextResumed) {
+      document.removeEventListener('click', unlockHandler, true);
+      document.removeEventListener('touchstart', unlockHandler, true);
+      document.removeEventListener('touchend', unlockHandler, true);
+      document.removeEventListener('keydown', unlockHandler, true);
+      console.log('[Sound] Unlock listeners removed');
+    }
+  };
+  document.addEventListener('click', unlockHandler, true);
+  document.addEventListener('touchstart', unlockHandler, true);
+  document.addEventListener('touchend', unlockHandler, true);
+  document.addEventListener('keydown', unlockHandler, true);
+  console.log('[Sound] Unlock listeners registered');
+}
+
+// Auto-register on import
+registerUnlockListeners();
+
+function canPlay() {
+  if (muted) return false;
+  if (!audioCtx) return false;
+  // Try to resume if needed
+  if (audioCtx.state === 'suspended') {
+    tryResume();
+  }
+  return audioCtx.state === 'running';
 }
 
 function playTone(freq, duration, type = 'square', volume = 1, delay = 0) {
-  if (!isReady()) return;
+  if (!canPlay()) return;
   try {
     const t = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
@@ -45,12 +82,12 @@ function playTone(freq, duration, type = 'square', volume = 1, delay = 0) {
     osc.start(t + delay);
     osc.stop(t + delay + duration + 0.01);
   } catch (e) {
-    // ignore audio errors
+    console.warn('[Sound] playTone error:', e);
   }
 }
 
 function playNoise(duration, volume = 0.5, delay = 0) {
-  if (!isReady()) return;
+  if (!canPlay()) return;
   try {
     const t = audioCtx.currentTime;
     const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
@@ -68,12 +105,12 @@ function playNoise(duration, volume = 0.5, delay = 0) {
     gain.connect(masterGain);
     source.start(t + delay);
   } catch (e) {
-    // ignore audio errors
+    console.warn('[Sound] playNoise error:', e);
   }
 }
 
 function playSweep(startFreq, endFreq, duration, type = 'sine', volume = 0.3) {
-  if (!isReady()) return;
+  if (!canPlay()) return;
   try {
     const t = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
@@ -88,14 +125,14 @@ function playSweep(startFreq, endFreq, duration, type = 'sine', volume = 0.3) {
     osc.start(t);
     osc.stop(t + duration + 0.01);
   } catch (e) {
-    // ignore audio errors
+    console.warn('[Sound] playSweep error:', e);
   }
 }
 
 export const SoundManager = {
-  // Call on first user interaction (click/tap) to unlock audio
+  // Can still be called from Phaser scenes, but the real unlock happens via DOM listeners above
   unlock() {
-    resumeContext();
+    tryResume();
   },
 
   setMuted(value) {
