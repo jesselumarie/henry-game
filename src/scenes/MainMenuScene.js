@@ -14,6 +14,16 @@ export class MainMenuScene extends Phaser.Scene {
     // Unlock audio on any user interaction with the game
     this.input.on('pointerdown', () => SoundManager.unlock(), this);
 
+    // Play title theme music (looping)
+    if (!this.sound.get('title-theme')) {
+      this.titleMusic = this.sound.add('title-theme', { loop: true, volume: 0.5 });
+    } else {
+      this.titleMusic = this.sound.get('title-theme');
+    }
+    if (!this.titleMusic.isPlaying) {
+      this.titleMusic.play();
+    }
+
     // Background
     this.add
       .tileSprite(0, 0, width, height, 'mountain-bg')
@@ -73,6 +83,9 @@ export class MainMenuScene extends Phaser.Scene {
       btn.on('pointerdown', () => {
         SoundManager.unlock();
         SoundManager.buttonClick();
+        if (this.titleMusic && this.titleMusic.isPlaying) {
+          this.titleMusic.stop();
+        }
         this.scene.start(scene);
       });
     });
