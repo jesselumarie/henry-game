@@ -130,6 +130,26 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(10, 10, 4, 4);
     });
 
+    // Health potion collectible
+    this.createPixelSprite('collectible-potion', 16, 16, (ctx) => {
+      // Bottle body
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(4, 6, 8, 8);
+      // Bottle neck
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(6, 3, 4, 3);
+      // Cork
+      ctx.fillStyle = '#885522';
+      ctx.fillRect(6, 1, 4, 2);
+      // Shine
+      ctx.fillStyle = '#ff6666';
+      ctx.fillRect(5, 7, 2, 3);
+      // Plus symbol (health cross)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(7, 8, 2, 4);
+      ctx.fillRect(6, 9, 4, 2);
+    });
+
     // Ramp
     this.createPixelSprite('ramp', 32, 32, (ctx) => {
       ctx.fillStyle = '#ccaa66';

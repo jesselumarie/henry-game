@@ -5,6 +5,7 @@ import {
 } from '../systems/LevelManager.js';
 import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { SpriteManager } from '../systems/SpriteManager.js';
+import { SoundManager } from '../systems/SoundManager.js';
 
 const COMBAT_STATES = {
   PLAYER_TURN: 'player_turn',
@@ -24,6 +25,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.skiResults = data?.skiResults || { score: 0, coins: 0, stars: 0, tricks: 0 };
     this.bonuses = data?.bonuses || { bonusHp: 0, bonusDamage: 0, bonusCrit: 0 };
 
+    this.potions = data?.skiResults?.potions || 0;
     this.playerHp = 100 + this.bonuses.bonusHp;
     this.playerMaxHp = this.playerHp;
     this.combatState = COMBAT_STATES.PLAYER_TURN;
@@ -152,34 +154,71 @@ export class CombatPhaseScene extends Phaser.Scene {
       { text: 'ATTACK', action: () => this.startAttack() },
       { text: 'DEFEND', action: () => this.defend() },
       { text: 'SPECIAL', action: () => this.specialAttack() },
+      { text: `POTION (${this.potions})`, action: () => this.usePotion(), color: '#553535' },
     ];
 
     actions.forEach((act, i) => {
+      const bgColor = act.color || '#335577';
       const btn = this.add
-        .text(200 + i * 200, height - 30, act.text, {
-          fontSize: '16px',
+        .text(100 + i * 160, height - 30, act.text, {
+          fontSize: '14px',
           fontFamily: 'Courier New',
           color: '#ffffff',
-          backgroundColor: '#335577',
-          padding: { x: 16, y: 8 },
+          backgroundColor: bgColor,
+          padding: { x: 12, y: 8 },
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true })
         .setDepth(10);
 
-      btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#4477aa' }));
-      btn.on('pointerout', () => btn.setStyle({ backgroundColor: '#335577' }));
-      btn.on('pointerdown', act.action);
+      btn.on('pointerover', () => {
+        btn.setStyle({ backgroundColor: '#4477aa' });
+        SoundManager.buttonHover();
+      });
+      btn.on('pointerout', () => btn.setStyle({ backgroundColor: bgColor }));
+      btn.on('pointerdown', () => {
+        SoundManager.buttonClick();
+        act.action();
+      });
 
       this.actionButtons.push(btn);
     });
+
+    // Disable potion button if no potions
+    if (this.potions <= 0) {
+      const potionBtn = this.actionButtons[3];
+      potionBtn.setAlpha(0.4);
+      potionBtn.disableInteractive();
+    }
   }
 
   setButtonsEnabled(enabled) {
-    this.actionButtons.forEach((btn) => {
-      btn.setInteractive(enabled ? { useHandCursor: true } : false);
-      btn.setAlpha(enabled ? 1 : 0.4);
+    this.actionButtons.forEach((btn, i) => {
+      if (i === 3 && this.potions <= 0) {
+        // Keep potion button disabled if no potions left
+        btn.disableInteractive();
+        btn.setAlpha(0.4);
+        return;
+      }
+      if (enabled) {
+        btn.setInteractive({ useHandCursor: true });
+        btn.setAlpha(1);
+      } else {
+        btn.disableInteractive();
+        btn.setAlpha(0.4);
+      }
     });
+  }
+
+  updatePotionButton() {
+    const potionBtn = this.actionButtons[3];
+    if (potionBtn) {
+      potionBtn.setText(`POTION (${this.potions})`);
+      if (this.potions <= 0) {
+        potionBtn.setAlpha(0.4);
+        potionBtn.disableInteractive();
+      }
+    }
   }
 
   getCurrentEnemy() {
@@ -250,6 +289,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     const handler = () => {
       presses++;
       counter.setText(`${presses}/${maxPresses}`);
+      SoundManager.qteMash();
     };
 
     spaceKey.on('down', handler);
@@ -436,6 +476,12 @@ export class CombatPhaseScene extends Phaser.Scene {
       `${qualityText} ${finalDamage} damage!${isCrit ? ' CRITICAL HIT!' : ''}`
     );
 
+    if (score > 0.2) {
+      isCrit ? SoundManager.criticalHit() : SoundManager.attackHit();
+    } else {
+      SoundManager.qteFail();
+    }
+
     // Flash enemy
     enemy.sprite.setTint(0xffffff);
     this.time.delayedCall(200, () => {
@@ -445,6 +491,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     // Check if enemy is dead
     if (enemy.currentHp <= 0) {
       enemy.alive = false;
+      SoundManager.enemyDeath();
       this.tweens.add({
         targets: enemy.sprite,
         alpha: 0,
@@ -466,6 +513,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.setButtonsEnabled(false);
     this.logText.setText('You brace for impact! (Half damage)');
     this.isDefending = true;
+    SoundManager.defend();
 
     this.time.delayedCall(800, () => {
       this.enemyTurn();
@@ -494,6 +542,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.updateHpBar(this.enemyHpBars[enemyIdx], enemy.currentHp, enemy.maxHp);
 
     this.logText.setText(`SPECIAL ATTACK! ${damage} damage! (-20 HP)`);
+    SoundManager.specialAttack();
 
     enemy.sprite.setTint(0xff4444);
     this.time.delayedCall(300, () => {
@@ -502,6 +551,7 @@ export class CombatPhaseScene extends Phaser.Scene {
 
     if (enemy.currentHp <= 0) {
       enemy.alive = false;
+      SoundManager.enemyDeath();
       this.tweens.add({
         targets: enemy.sprite,
         alpha: 0,
@@ -513,6 +563,35 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.setButtonsEnabled(false);
     this.time.delayedCall(1000, () => {
       if (this.checkVictory()) return;
+      this.enemyTurn();
+    });
+  }
+
+  usePotion() {
+    if (this.combatState !== COMBAT_STATES.PLAYER_TURN) return;
+    if (this.potions <= 0) {
+      this.logText.setText('No potions left!');
+      return;
+    }
+
+    this.potions--;
+    const healAmount = 30;
+    const oldHp = this.playerHp;
+    this.playerHp = Math.min(this.playerMaxHp, this.playerHp + healAmount);
+    const actualHeal = this.playerHp - oldHp;
+    this.updateHpBar(this.playerHpBar, this.playerHp, this.playerMaxHp);
+    this.updatePotionButton();
+
+    this.logText.setText(`Used potion! +${actualHeal} HP (${this.potions} left)`);
+    SoundManager.usePotion();
+
+    // Green flash on player
+    this.playerSprite.setTint(0x44ff44);
+    this.time.delayedCall(400, () => this.playerSprite.clearTint());
+
+    // Using a potion takes your turn
+    this.setButtonsEnabled(false);
+    this.time.delayedCall(1000, () => {
       this.enemyTurn();
     });
   }
@@ -547,6 +626,8 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.isDefending = false;
 
     this.logText.setText(`Enemies attack for ${totalDamage} damage!`);
+    SoundManager.enemyAttack();
+    this.time.delayedCall(150, () => SoundManager.playerHurt());
 
     // Flash player
     this.playerSprite.setTint(0xff4444);
@@ -555,6 +636,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     // Check defeat
     if (this.playerHp <= 0) {
       this.combatState = COMBAT_STATES.DEFEAT;
+      SoundManager.defeat();
       this.time.delayedCall(1000, () => {
         this.scene.start('GameOverScene', {
           result: 'defeat',
@@ -579,6 +661,7 @@ export class CombatPhaseScene extends Phaser.Scene {
       this.combatState = COMBAT_STATES.VICTORY;
       this.logText.setText('VICTORY!');
       this.setButtonsEnabled(false);
+      SoundManager.victory();
 
       this.time.delayedCall(2000, () => {
         this.scene.start('GameOverScene', {

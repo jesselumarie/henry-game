@@ -9,6 +9,7 @@ export const SPRITE_ROLES = {
   obstacle_rock: { name: 'Rock', defaultKey: 'obstacle-rock', size: 32 },
   collectible_coin: { name: 'Coin', defaultKey: 'collectible-coin', size: 16 },
   collectible_star: { name: 'Star', defaultKey: 'collectible-star', size: 16 },
+  collectible_potion: { name: 'Health Potion', defaultKey: 'collectible-potion', size: 16 },
   ramp: { name: 'Ramp', defaultKey: 'ramp', size: 32 },
 };
 

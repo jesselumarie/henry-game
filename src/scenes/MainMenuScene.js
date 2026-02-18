@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem.js';
+import { SoundManager } from '../systems/SoundManager.js';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -9,6 +10,9 @@ export class MainMenuScene extends Phaser.Scene {
   create() {
     const { width, height } = this.cameras.main;
     const saveData = SaveSystem.load();
+
+    // Unlock audio on any user interaction with the game
+    this.input.on('pointerdown', () => SoundManager.unlock(), this);
 
     // Background
     this.add
@@ -61,11 +65,14 @@ export class MainMenuScene extends Phaser.Scene {
 
       btn.on('pointerover', () => {
         btn.setStyle({ backgroundColor: '#4477aa' });
+        SoundManager.buttonHover();
       });
       btn.on('pointerout', () => {
         btn.setStyle({ backgroundColor: '#335577' });
       });
       btn.on('pointerdown', () => {
+        SoundManager.unlock();
+        SoundManager.buttonClick();
         this.scene.start(scene);
       });
     });
