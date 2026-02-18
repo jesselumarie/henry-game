@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SoundManager } from '../systems/SoundManager.js';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -74,13 +75,15 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    playAgain.on('pointerover', () =>
-      playAgain.setStyle({ backgroundColor: '#4477aa' })
-    );
+    playAgain.on('pointerover', () => {
+      playAgain.setStyle({ backgroundColor: '#4477aa' });
+      SoundManager.buttonHover();
+    });
     playAgain.on('pointerout', () =>
       playAgain.setStyle({ backgroundColor: '#335577' })
     );
     playAgain.on('pointerdown', () => {
+      SoundManager.buttonClick();
       this.scene.start('SkiPhaseScene');
     });
 
@@ -92,13 +95,15 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    mainMenu.on('pointerover', () =>
-      mainMenu.setStyle({ backgroundColor: '#774477' })
-    );
+    mainMenu.on('pointerover', () => {
+      mainMenu.setStyle({ backgroundColor: '#774477' });
+      SoundManager.buttonHover();
+    });
     mainMenu.on('pointerout', () =>
       mainMenu.setStyle({ backgroundColor: '#553355' })
     );
     mainMenu.on('pointerdown', () => {
+      SoundManager.buttonClick();
       this.scene.start('MainMenuScene');
     });
   }

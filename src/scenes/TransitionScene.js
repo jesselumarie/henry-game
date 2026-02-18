@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem.js';
 import { WeaponSystem, WEAPONS } from '../systems/WeaponSystem.js';
+import { SoundManager } from '../systems/SoundManager.js';
 
 export class TransitionScene extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,7 @@ export class TransitionScene extends Phaser.Scene {
       coins: data?.coins || 0,
       stars: data?.stars || 0,
       tricks: data?.tricks || 0,
+      potions: data?.potions || 0,
     };
   }
 
@@ -55,6 +57,7 @@ export class TransitionScene extends Phaser.Scene {
       `Coins: ${this.skiResults.coins}`,
       `Stars: ${this.skiResults.stars}`,
       `Tricks: ${this.skiResults.tricks}`,
+      `Potions: ${this.skiResults.potions}`,
       `Total Runs: ${runCount}`,
     ];
 
@@ -145,13 +148,15 @@ export class TransitionScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
 
-      btn.on('pointerover', () =>
-        btn.setStyle({ backgroundColor: '#4477aa' })
-      );
+      btn.on('pointerover', () => {
+        btn.setStyle({ backgroundColor: '#4477aa' });
+        SoundManager.buttonHover();
+      });
       btn.on('pointerout', () =>
         btn.setStyle({ backgroundColor: '#335577' })
       );
       btn.on('pointerdown', () => {
+        SoundManager.buttonClick();
         this.startCombat(weapon, this.skiResults);
       });
 
@@ -179,11 +184,15 @@ export class TransitionScene extends Phaser.Scene {
     };
 
     // Show bonuses
+    const bonusLine = `Combat Bonuses: +${this.combatBonuses.bonusHp} HP | +${this.combatBonuses.bonusDamage} DMG | +${this.combatBonuses.bonusCrit}% Crit`;
+    const potionLine = this.skiResults.potions > 0
+      ? ` | ${this.skiResults.potions} Potion${this.skiResults.potions > 1 ? 's' : ''}`
+      : '';
     this.add
       .text(
         width / 2,
         weaponY + 100,
-        `Combat Bonuses: +${this.combatBonuses.bonusHp} HP | +${this.combatBonuses.bonusDamage} DMG | +${this.combatBonuses.bonusCrit}% Crit`,
+        bonusLine + potionLine,
         {
           fontSize: '12px',
           fontFamily: 'Courier New',

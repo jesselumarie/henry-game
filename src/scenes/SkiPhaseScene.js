@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { LevelManager, DEFAULT_SKI_LEVEL } from '../systems/LevelManager.js';
 import { SpriteManager } from '../systems/SpriteManager.js';
+import { SoundManager } from '../systems/SoundManager.js';
 
 export class SkiPhaseScene extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.coins = 0;
     this.stars = 0;
     this.tricks = 0;
+    this.potions = 0;
     this.isAirborne = false;
     this.trickRotation = 0;
     this.gameOver = false;
@@ -70,6 +72,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.coinGroup = this.physics.add.staticGroup();
     this.starGroup = this.physics.add.staticGroup();
     this.rampGroup = this.physics.add.staticGroup();
+    this.potionGroup = this.physics.add.staticGroup();
 
     // Spawn level objects
     level.objects.forEach((obj) => {
@@ -83,6 +86,9 @@ export class SkiPhaseScene extends Phaser.Scene {
       } else if (obj.type === 'collectible_star') {
         const star = this.starGroup.create(obj.x, obj.y, textureKey);
         star.setDepth(3);
+      } else if (obj.type === 'collectible_potion') {
+        const potion = this.potionGroup.create(obj.x, obj.y, textureKey);
+        potion.setDepth(3);
       } else if (obj.type === 'ramp') {
         const ramp = this.rampGroup.create(obj.x, obj.y, textureKey);
         ramp.setDepth(3);
@@ -108,6 +114,13 @@ export class SkiPhaseScene extends Phaser.Scene {
       this.player,
       this.starGroup,
       this.collectStar,
+      null,
+      this
+    );
+    this.physics.add.overlap(
+      this.player,
+      this.potionGroup,
+      this.collectPotion,
       null,
       this
     );
@@ -217,6 +230,7 @@ export class SkiPhaseScene extends Phaser.Scene {
         this.trickRotation = 0;
         this.player.setAngle(0);
         this.showStatus('TRICK! +100');
+        SoundManager.trickComplete();
       }
     }
 
@@ -239,6 +253,7 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     this.score = Math.max(0, this.score - 50);
     this.showStatus('OUCH! -50');
+    SoundManager.obstacleHit();
 
     // Knockback
     player.body.setVelocityX(-100);
@@ -258,6 +273,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.coins++;
     this.score += 25;
     this.showStatus('+25');
+    SoundManager.coinPickup();
   }
 
   collectStar(player, star) {
@@ -265,6 +281,14 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.stars++;
     this.score += 75;
     this.showStatus('STAR! +75');
+    SoundManager.starPickup();
+  }
+
+  collectPotion(player, potion) {
+    potion.destroy();
+    this.potions++;
+    this.showStatus('POTION! +1');
+    SoundManager.potionPickup();
   }
 
   hitRamp(player, ramp) {
@@ -272,6 +296,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.isAirborne = true;
     this.trickRotation = 0;
     this.showStatus('AIRBORNE! Press SPACE for tricks!');
+    SoundManager.rampJump();
 
     // Jump effect
     player.body.setVelocityY(-200);
@@ -299,6 +324,7 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     this.player.body.setVelocity(0, 0);
     this.showStatus('FINISH!');
+    SoundManager.finishLine();
 
     this.time.delayedCall(1500, () => {
       this.scene.start('TransitionScene', {
@@ -306,6 +332,7 @@ export class SkiPhaseScene extends Phaser.Scene {
         coins: this.coins,
         stars: this.stars,
         tricks: this.tricks,
+        potions: this.potions,
       });
     });
   }
