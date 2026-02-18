@@ -16,6 +16,9 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Load title theme music
+    this.load.audio('title-theme', 'title-theme.mp3');
+
     // Generate all placeholder sprites programmatically
     this.generatePlaceholderSprites();
   }
