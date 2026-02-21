@@ -24,6 +24,16 @@ export class MainMenuScene extends Phaser.Scene {
       this.titleMusic.play();
     }
 
+    // On first load, the browser blocks audio until a user gesture occurs.
+    // Listen for Phaser's sound unlock event and start the music once allowed.
+    if (this.sound.locked) {
+      this.sound.once('unlocked', () => {
+        if (this.titleMusic && !this.titleMusic.isPlaying) {
+          this.titleMusic.play();
+        }
+      });
+    }
+
     // Background
     this.add
       .tileSprite(0, 0, width, height, 'mountain-bg')
