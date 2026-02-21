@@ -24,11 +24,21 @@ export class SkiPhaseScene extends Phaser.Scene {
     const level = LevelManager.getLevel(this.levelId) || DEFAULT_SKI_LEVEL;
     const { width, height } = this.cameras.main;
 
-    // Slope configuration — gives the run a downhill feel
+    // Slope configuration
     this.slopeRatio = 0.2; // drop 0.2px for every 1px of horizontal travel
     const slopeDrop = level.width * this.slopeRatio;
-    const worldHeight = height + slopeDrop + 100;
+    const worldHeight = height + slopeDrop + 200;
     this.downhillAngle = 12; // visual tilt in degrees
+
+    // Lane system — player steers across the slope, not free-flying
+    this.laneOffset = 0;        // current offset from slope center (negative = uphill, positive = downhill)
+    this.laneRange = 120;       // max pixels the player can steer from the slope center
+    this.laneSpeed = 200;       // how fast the player can steer between lanes (px/s)
+
+    // Airborne physics
+    this.verticalVelocity = 0;  // current vertical speed (negative = going up)
+    this.gravity = 600;         // gravity pull (px/s^2)
+    this.airOffset = 0;         // how far above the slope surface the player is
 
     // Set world bounds to accommodate the slope
     this.physics.world.setBounds(0, 0, level.width, worldHeight);
@@ -58,7 +68,7 @@ export class SkiPhaseScene extends Phaser.Scene {
       }
     }
 
-    // Slope line (visual ski slope angle) — now diagonal
+    // Slope line (visual ski slope angle)
     const slopeGraphics = this.add.graphics();
     slopeGraphics.lineStyle(2, 0xccddee, 0.3);
     slopeGraphics.lineBetween(0, height - 64, level.width, height - 64 + slopeDrop);
@@ -75,12 +85,15 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     // Player
     const playerKey = SpriteManager.getTextureKey('player');
-    const playerStartY = height - 100 + this.getSlopeY(100);
+    const playerStartY = this.getSlopeSurfaceY(100);
     this.player = this.physics.add.sprite(100, playerStartY, playerKey);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(5);
     this.player.body.setSize(20, 28);
     this.player.setAngle(this.downhillAngle);
+
+    // Disable gravity on the physics body — we handle it ourselves
+    this.player.body.setAllowGravity(false);
 
     // Auto-scroll speed (skiing downhill)
     this.skiSpeed = 200;
@@ -238,22 +251,18 @@ export class SkiPhaseScene extends Phaser.Scene {
     return x * this.slopeRatio;
   }
 
-  update() {
+  // Get the actual slope surface Y for the player at a given X
+  getSlopeSurfaceY(x) {
+    const { height } = this.cameras.main;
+    return height - 100 + this.getSlopeY(x);
+  }
+
+  update(time, delta) {
     if (this.gameOver) return;
 
-    // Downhill drift — player naturally descends the slope
-    const downhillSpeed = this.player.body.velocity.x * this.slopeRatio;
+    const dt = delta / 1000; // delta in seconds
 
-    // Player movement (vertical with downhill drift added)
-    if (this.cursors.up.isDown) {
-      this.player.body.setVelocityY(-180 + downhillSpeed);
-    } else if (this.cursors.down.isDown) {
-      this.player.body.setVelocityY(180 + downhillSpeed);
-    } else {
-      this.player.body.setVelocityY(downhillSpeed);
-    }
-
-    // Speed boost / brake
+    // --- Horizontal movement (speed boost / brake) ---
     if (this.cursors.right.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 1.5);
     } else if (this.cursors.left.isDown) {
@@ -262,7 +271,40 @@ export class SkiPhaseScene extends Phaser.Scene {
       this.player.body.setVelocityX(this.skiSpeed);
     }
 
-    // Trick while airborne
+    // --- Lane steering (up/down moves across the slope, not free-fly) ---
+    if (!this.isAirborne) {
+      if (this.cursors.up.isDown) {
+        this.laneOffset -= this.laneSpeed * dt;
+      } else if (this.cursors.down.isDown) {
+        this.laneOffset += this.laneSpeed * dt;
+      }
+      // Clamp to slope width
+      this.laneOffset = Phaser.Math.Clamp(this.laneOffset, -this.laneRange, this.laneRange);
+    }
+
+    // --- Vertical (airborne) physics ---
+    if (this.isAirborne) {
+      // Apply gravity
+      this.verticalVelocity += this.gravity * dt;
+      this.airOffset -= this.verticalVelocity * dt;
+
+      // Landed back on the slope
+      if (this.airOffset <= 0) {
+        this.airOffset = 0;
+        this.verticalVelocity = 0;
+        this.isAirborne = false;
+        this.player.setAngle(this.downhillAngle);
+      }
+    }
+
+    // --- Position the player on the slope surface ---
+    const slopeY = this.getSlopeSurfaceY(this.player.x);
+    const targetY = slopeY + this.laneOffset - this.airOffset;
+    this.player.y = targetY;
+    // We set velocity Y to 0 so arcade physics doesn't fight us
+    this.player.body.setVelocityY(0);
+
+    // --- Trick while airborne ---
     if (this.isAirborne && this.spaceKey.isDown) {
       this.trickRotation += 5;
       this.player.setAngle(this.trickRotation);
@@ -345,13 +387,9 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.showStatus('AIRBORNE! Press SPACE for tricks!');
     SoundManager.rampJump();
 
-    // Jump effect — launch upward against the slope
-    player.body.setVelocityY(-250);
-    this.time.delayedCall(1500, () => {
-      this.isAirborne = false;
-      player.setAngle(this.downhillAngle);
-      player.body.setVelocityY(0);
-    });
+    // Launch upward off the slope
+    this.verticalVelocity = -350;
+    this.airOffset = 1; // start just above ground so we're immediately airborne
   }
 
   showStatus(text) {
