@@ -32,6 +32,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.currentEnemyIndex = 0;
     this.qteResult = 0;
     this.turnCount = 0;
+    this.defendMultiplier = 1;
   }
 
   create() {
@@ -525,11 +526,85 @@ export class CombatPhaseScene extends Phaser.Scene {
 
   defend() {
     if (this.combatState !== COMBAT_STATES.PLAYER_TURN) return;
-    this.combatState = COMBAT_STATES.ENEMY_TURN;
+    this.combatState = COMBAT_STATES.QTE_ACTIVE;
     this.setButtonsEnabled(false);
-    this.logText.setText('You brace for impact! (Half damage)');
     this.isDefending = true;
     SoundManager.defend();
+    this.runDefendQTE();
+  }
+
+  runDefendQTE() {
+    this.qteContainer.setVisible(true);
+    this.qteContainer.removeAll(true);
+
+    const bg = this.add.rectangle(0, 0, 400, 100, 0x000000, 0.8);
+    const label = this.add
+      .text(0, -35, 'HIT SPACE IN THE BLUE ZONE!', {
+        fontSize: '14px',
+        fontFamily: 'Courier New',
+        color: '#44aaff',
+      })
+      .setOrigin(0.5);
+
+    // Timing bar
+    const barBg = this.add.rectangle(0, 10, 300, 20, 0x333333);
+    const sweetSpot = this.add.rectangle(0, 10, 60, 20, 0x4488ff, 0.6);
+    const marker = this.add.rectangle(-150, 10, 6, 24, 0xffffff);
+
+    this.qteContainer.add([bg, label, barBg, sweetSpot, marker]);
+
+    let markerX = -150;
+    const speed = 4;
+    let done = false;
+
+    const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    const handler = () => {
+      if (done) return;
+      done = true;
+      // Center of sweet spot is at x=0, bar spans -150 to 150
+      const dist = Math.abs(markerX);
+      // Score: 1.0 at center, 0.0 at edges (150px away)
+      const score = Math.max(0, 1 - dist / 150);
+      this.finishDefendQTE(score);
+    };
+
+    spaceKey.once('down', handler);
+
+    const timer = this.time.addEvent({
+      delay: 16,
+      loop: true,
+      callback: () => {
+        if (done) {
+          timer.remove();
+          return;
+        }
+        markerX += speed;
+        marker.x = markerX;
+        if (markerX > 150) {
+          done = true;
+          timer.remove();
+          spaceKey.off('down', handler);
+          this.finishDefendQTE(0);
+        }
+      },
+    });
+  }
+
+  finishDefendQTE(score) {
+    this.qteContainer.setVisible(false);
+
+    // Damage reduction: 0% at edges (score=0) to 70% at center (score=1)
+    const reduction = Math.round(score * 70);
+    this.defendMultiplier = 1 - (score * 0.7);
+
+    const qualityText =
+      score > 0.9 ? 'PERFECT BLOCK!' :
+      score > 0.6 ? 'GREAT BLOCK!' :
+      score > 0.3 ? 'OK BLOCK' :
+      'WEAK BLOCK...';
+
+    this.logText.setText(`${qualityText} Damage reduced by ${reduction}%`);
 
     this.time.delayedCall(800, () => {
       this.enemyTurn();
@@ -625,7 +700,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     aliveEnemies.forEach((enemy) => {
       let dmg = Phaser.Math.Between(5, 15);
       if (enemy.type === 'enemy_strong') dmg = Phaser.Math.Between(10, 25);
-      if (this.isDefending) dmg = Math.round(dmg / 2);
+      if (this.isDefending) dmg = Math.round(dmg * this.defendMultiplier);
       totalDamage += dmg;
 
       // Visual: enemy "attacks"
@@ -640,6 +715,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.playerHp -= totalDamage;
     this.updateHpBar(this.playerHpBar, this.playerHp, this.playerMaxHp);
     this.isDefending = false;
+    this.defendMultiplier = 1;
 
     this.logText.setText(`Enemies attack for ${totalDamage} damage!`);
     SoundManager.enemyAttack();
