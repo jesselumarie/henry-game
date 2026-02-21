@@ -117,6 +117,16 @@ export class CombatPhaseScene extends Phaser.Scene {
     // QTE area (hidden initially)
     this.qteContainer = this.add.container(width / 2, height / 2).setVisible(false).setDepth(50);
 
+    // Play boss music during combat
+    if (!this.sound.get('boss')) {
+      this.bgMusic = this.sound.add('boss', { loop: true, volume: 0.4 });
+    } else {
+      this.bgMusic = this.sound.get('boss');
+    }
+    if (!this.bgMusic.isPlaying) {
+      this.bgMusic.play();
+    }
+
     // Player HP label
     this.add
       .text(140, height - 100, 'YOU', {
@@ -652,6 +662,9 @@ export class CombatPhaseScene extends Phaser.Scene {
     // Check defeat
     if (this.playerHp <= 0) {
       this.combatState = COMBAT_STATES.DEFEAT;
+      if (this.bgMusic && this.bgMusic.isPlaying) {
+        this.bgMusic.stop();
+      }
       SoundManager.defeat();
       this.time.delayedCall(1000, () => {
         this.scene.start('GameOverScene', {
@@ -677,6 +690,9 @@ export class CombatPhaseScene extends Phaser.Scene {
       this.combatState = COMBAT_STATES.VICTORY;
       this.logText.setText('VICTORY!');
       this.setButtonsEnabled(false);
+      if (this.bgMusic && this.bgMusic.isPlaying) {
+        this.bgMusic.stop();
+      }
       SoundManager.victory();
 
       this.time.delayedCall(2000, () => {

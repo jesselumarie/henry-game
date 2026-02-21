@@ -222,11 +222,11 @@ export class SkiPhaseScene extends Phaser.Scene {
     // Level progress
     this.levelWidth = level.width;
 
-    // Play background music during skiing
-    if (!this.sound.get('title-theme')) {
-      this.bgMusic = this.sound.add('title-theme', { loop: true, volume: 0.4 });
+    // Play main level music during skiing
+    if (!this.sound.get('main-level')) {
+      this.bgMusic = this.sound.add('main-level', { loop: true, volume: 0.4 });
     } else {
-      this.bgMusic = this.sound.get('title-theme');
+      this.bgMusic = this.sound.get('main-level');
     }
     if (!this.bgMusic.isPlaying) {
       this.bgMusic.play();
