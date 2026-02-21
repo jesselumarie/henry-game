@@ -108,10 +108,11 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.rampGroup = this.physics.add.staticGroup();
     this.potionGroup = this.physics.add.staticGroup();
 
-    // Spawn level objects — offset Y along the slope
+    // Spawn level objects — obj.y is a lane offset from the slope surface
     level.objects.forEach((obj) => {
       const textureKey = SpriteManager.getTextureKey(obj.type);
-      const adjustedY = obj.y + this.getSlopeY(obj.x);
+      const surfaceY = this.getSlopeSurfaceY(obj.x);
+      const adjustedY = surfaceY + obj.y;
 
       if (obj.type.startsWith('obstacle_')) {
         const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
@@ -251,10 +252,12 @@ export class SkiPhaseScene extends Phaser.Scene {
     return x * this.slopeRatio;
   }
 
-  // Get the actual slope surface Y for the player at a given X
+  // Get the actual slope surface Y for the player center at a given X
+  // Snow tiles start at (height - 64 + slopeY). Player sprite is 32px tall (centered),
+  // so center at snowTop - 16 puts the feet right on the snow.
   getSlopeSurfaceY(x) {
     const { height } = this.cameras.main;
-    return height - 100 + this.getSlopeY(x);
+    return height - 80 + this.getSlopeY(x);
   }
 
   update(time, delta) {
