@@ -258,30 +258,37 @@ export class CombatPhaseScene extends Phaser.Scene {
     const maxPresses = 20;
     const duration = 3000;
 
-    const bg = this.add.rectangle(0, 0, 300, 120, 0x000000, 0.8);
+    const bg = this.add.rectangle(0, 0, 300, 140, 0x000000, 0.8);
     const label = this.add
-      .text(0, -40, 'MASH SPACE!', {
+      .text(0, -50, 'MASH SPACE!', {
         fontSize: '20px',
         fontFamily: 'Courier New',
         color: '#ffee00',
       })
       .setOrigin(0.5);
     const counter = this.add
-      .text(0, 0, `${presses}/${maxPresses}`, {
+      .text(0, -10, `${presses}/${maxPresses}`, {
         fontSize: '24px',
         fontFamily: 'Courier New',
         color: '#ffffff',
       })
       .setOrigin(0.5);
+    const bonusText = this.add
+      .text(0, 20, '', {
+        fontSize: '16px',
+        fontFamily: 'Courier New',
+        color: '#ff4444',
+      })
+      .setOrigin(0.5);
     const timerText = this.add
-      .text(0, 30, '3.0s', {
+      .text(0, 45, '3.0s', {
         fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#aaaaaa',
       })
       .setOrigin(0.5);
 
-    this.qteContainer.add([bg, label, counter, timerText]);
+    this.qteContainer.add([bg, label, counter, bonusText, timerText]);
 
     const startTime = Date.now();
     const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -290,6 +297,14 @@ export class CombatPhaseScene extends Phaser.Scene {
       presses++;
       counter.setText(`${presses}/${maxPresses}`);
       SoundManager.qteMash();
+
+      // Show bonus indicator when exceeding the base target
+      if (presses > maxPresses) {
+        const bonusCount = presses - maxPresses;
+        bonusText.setText(`BONUS! +${bonusCount}`);
+        bonusText.setColor('#ff4444');
+        counter.setColor('#ff4444');
+      }
     };
 
     spaceKey.on('down', handler);
@@ -305,7 +320,8 @@ export class CombatPhaseScene extends Phaser.Scene {
         if (elapsed >= duration) {
           timer.remove();
           spaceKey.off('down', handler);
-          const score = Math.min(1, presses / maxPresses);
+          // No cap — mashing beyond 20 gives extra damage
+          const score = presses / maxPresses;
           this.finishQTE(score);
         }
       },
@@ -471,7 +487,7 @@ export class CombatPhaseScene extends Phaser.Scene {
 
     // Visual feedback
     const qualityText =
-      score > 0.8 ? 'PERFECT!' : score > 0.5 ? 'GOOD!' : score > 0.2 ? 'OK' : 'MISS...';
+      score > 1.0 ? 'INSANE!!' : score > 0.8 ? 'PERFECT!' : score > 0.5 ? 'GOOD!' : score > 0.2 ? 'OK' : 'MISS...';
     this.logText.setText(
       `${qualityText} ${finalDamage} damage!${isCrit ? ' CRITICAL HIT!' : ''}`
     );

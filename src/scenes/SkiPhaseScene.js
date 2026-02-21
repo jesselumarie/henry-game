@@ -24,8 +24,14 @@ export class SkiPhaseScene extends Phaser.Scene {
     const level = LevelManager.getLevel(this.levelId) || DEFAULT_SKI_LEVEL;
     const { width, height } = this.cameras.main;
 
-    // Set world bounds to level width
-    this.physics.world.setBounds(0, 0, level.width, height);
+    // Slope configuration — gives the run a downhill feel
+    this.slopeRatio = 0.2; // drop 0.2px for every 1px of horizontal travel
+    const slopeDrop = level.width * this.slopeRatio;
+    const worldHeight = height + slopeDrop + 100;
+    this.downhillAngle = 12; // visual tilt in degrees
+
+    // Set world bounds to accommodate the slope
+    this.physics.world.setBounds(0, 0, level.width, worldHeight);
 
     // Background layers (parallax)
     this.skyBg = this.add
@@ -40,28 +46,43 @@ export class SkiPhaseScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(-5);
 
-    // Snow ground
+    // Snow ground tiles along the slope
     for (let x = 0; x < level.width; x += 32) {
-      this.add
-        .image(x, height - 32, 'snow-ground')
-        .setOrigin(0, 0)
-        .setDepth(0);
+      const groundY = height - 64 + this.getSlopeY(x);
+      // Ground surface and fill below
+      for (let y = groundY; y < worldHeight; y += 32) {
+        this.add
+          .image(x, y, 'snow-ground')
+          .setOrigin(0, 0)
+          .setDepth(0);
+      }
     }
 
-    // Slope line (visual ski slope angle)
+    // Slope line (visual ski slope angle) — now diagonal
     const slopeGraphics = this.add.graphics();
     slopeGraphics.lineStyle(2, 0xccddee, 0.3);
-    slopeGraphics.lineBetween(0, height - 64, level.width, height - 64);
+    slopeGraphics.lineBetween(0, height - 64, level.width, height - 64 + slopeDrop);
     slopeGraphics.setDepth(0);
+
+    // Diagonal slope marks for visual speed/direction cues
+    const slopeMarks = this.add.graphics();
+    slopeMarks.lineStyle(1, 0xddeeff, 0.15);
+    for (let x = 0; x < level.width; x += 80) {
+      const markY = height - 80 + this.getSlopeY(x);
+      slopeMarks.lineBetween(x, markY, x + 40, markY + 8);
+    }
+    slopeMarks.setDepth(1);
 
     // Player
     const playerKey = SpriteManager.getTextureKey('player');
-    this.player = this.physics.add.sprite(100, height - 100, playerKey);
+    const playerStartY = height - 100 + this.getSlopeY(100);
+    this.player = this.physics.add.sprite(100, playerStartY, playerKey);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(5);
     this.player.body.setSize(20, 28);
+    this.player.setAngle(this.downhillAngle);
 
-    // Auto-scroll speed (skiing right)
+    // Auto-scroll speed (skiing downhill)
     this.skiSpeed = 200;
     this.player.body.setVelocityX(this.skiSpeed);
 
@@ -74,23 +95,25 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.rampGroup = this.physics.add.staticGroup();
     this.potionGroup = this.physics.add.staticGroup();
 
-    // Spawn level objects
+    // Spawn level objects — offset Y along the slope
     level.objects.forEach((obj) => {
       const textureKey = SpriteManager.getTextureKey(obj.type);
+      const adjustedY = obj.y + this.getSlopeY(obj.x);
+
       if (obj.type.startsWith('obstacle_')) {
-        const obstacle = this.obstacles.create(obj.x, obj.y, textureKey);
+        const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
         obstacle.setDepth(3);
       } else if (obj.type === 'collectible_coin') {
-        const coin = this.coinGroup.create(obj.x, obj.y, textureKey);
+        const coin = this.coinGroup.create(obj.x, adjustedY, textureKey);
         coin.setDepth(3);
       } else if (obj.type === 'collectible_star') {
-        const star = this.starGroup.create(obj.x, obj.y, textureKey);
+        const star = this.starGroup.create(obj.x, adjustedY, textureKey);
         star.setDepth(3);
       } else if (obj.type === 'collectible_potion') {
-        const potion = this.potionGroup.create(obj.x, obj.y, textureKey);
+        const potion = this.potionGroup.create(obj.x, adjustedY, textureKey);
         potion.setDepth(3);
       } else if (obj.type === 'ramp') {
-        const ramp = this.rampGroup.create(obj.x, obj.y, textureKey);
+        const ramp = this.rampGroup.create(obj.x, adjustedY, textureKey);
         ramp.setDepth(3);
       }
     });
@@ -132,8 +155,8 @@ export class SkiPhaseScene extends Phaser.Scene {
       this
     );
 
-    // Camera follows player
-    this.cameras.main.setBounds(0, 0, level.width, height);
+    // Camera follows player (both X and Y for the downhill slope)
+    this.cameras.main.setBounds(0, 0, level.width, worldHeight);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
     // Input
@@ -179,13 +202,14 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     // Finish line
     this.finishX = level.width - 100;
+    const finishY = this.getSlopeY(this.finishX);
     const finishLine = this.add.graphics();
     finishLine.lineStyle(4, 0xff4444, 1);
-    finishLine.lineBetween(this.finishX, 0, this.finishX, height);
+    finishLine.lineBetween(this.finishX, finishY - 100, this.finishX, finishY + height);
     finishLine.setDepth(2);
 
     this.add
-      .text(this.finishX, 30, 'FINISH', {
+      .text(this.finishX, finishY + 30, 'FINISH', {
         fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#ff4444',
@@ -197,18 +221,36 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     // Level progress
     this.levelWidth = level.width;
+
+    // Play background music during skiing
+    if (!this.sound.get('title-theme')) {
+      this.bgMusic = this.sound.add('title-theme', { loop: true, volume: 0.4 });
+    } else {
+      this.bgMusic = this.sound.get('title-theme');
+    }
+    if (!this.bgMusic.isPlaying) {
+      this.bgMusic.play();
+    }
+  }
+
+  // Get the slope Y offset at a given X position
+  getSlopeY(x) {
+    return x * this.slopeRatio;
   }
 
   update() {
     if (this.gameOver) return;
 
-    // Player movement (vertical only, horizontal is auto-scroll)
+    // Downhill drift — player naturally descends the slope
+    const downhillSpeed = this.player.body.velocity.x * this.slopeRatio;
+
+    // Player movement (vertical with downhill drift added)
     if (this.cursors.up.isDown) {
-      this.player.body.setVelocityY(-180);
+      this.player.body.setVelocityY(-180 + downhillSpeed);
     } else if (this.cursors.down.isDown) {
-      this.player.body.setVelocityY(180);
+      this.player.body.setVelocityY(180 + downhillSpeed);
     } else {
-      this.player.body.setVelocityY(0);
+      this.player.body.setVelocityY(downhillSpeed);
     }
 
     // Speed boost / brake
@@ -232,11 +274,16 @@ export class SkiPhaseScene extends Phaser.Scene {
         this.showStatus('TRICK! +100');
         SoundManager.trickComplete();
       }
+    } else if (!this.isAirborne) {
+      // Maintain downhill tilt when on the ground
+      this.player.setAngle(this.downhillAngle);
     }
 
-    // Parallax scrolling
+    // Parallax scrolling (both horizontal and vertical for downhill feel)
     this.skyBg.tilePositionX = this.cameras.main.scrollX * 0.1;
+    this.skyBg.tilePositionY = this.cameras.main.scrollY * 0.05;
     this.mountainBg.tilePositionX = this.cameras.main.scrollX * 0.3;
+    this.mountainBg.tilePositionY = this.cameras.main.scrollY * 0.15;
 
     // Check finish
     if (this.player.x >= this.finishX) {
@@ -298,11 +345,11 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.showStatus('AIRBORNE! Press SPACE for tricks!');
     SoundManager.rampJump();
 
-    // Jump effect
-    player.body.setVelocityY(-200);
+    // Jump effect — launch upward against the slope
+    player.body.setVelocityY(-250);
     this.time.delayedCall(1500, () => {
       this.isAirborne = false;
-      player.setAngle(0);
+      player.setAngle(this.downhillAngle);
       player.body.setVelocityY(0);
     });
   }
@@ -325,6 +372,11 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.player.body.setVelocity(0, 0);
     this.showStatus('FINISH!');
     SoundManager.finishLine();
+
+    // Stop background music
+    if (this.bgMusic && this.bgMusic.isPlaying) {
+      this.bgMusic.stop();
+    }
 
     this.time.delayedCall(1500, () => {
       this.scene.start('TransitionScene', {
