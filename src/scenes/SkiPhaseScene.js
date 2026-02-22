@@ -30,11 +30,6 @@ export class SkiPhaseScene extends Phaser.Scene {
     const worldHeight = height + slopeDrop + 200;
     this.downhillAngle = 12; // visual tilt in degrees
 
-    // Lane system — player steers across the slope, not free-flying
-    this.laneOffset = 0;        // current offset from slope center (negative = uphill, positive = downhill)
-    this.laneRange = 120;       // max pixels the player can steer from the slope center
-    this.laneSpeed = 200;       // how fast the player can steer between lanes (px/s)
-
     // Airborne physics
     this.verticalVelocity = 0;  // current vertical speed (negative = going up)
     this.gravity = 600;         // gravity pull (px/s^2)
@@ -116,8 +111,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.rampGroup = this.physics.add.staticGroup();
     this.potionGroup = this.physics.add.staticGroup();
 
-    // Spawn level objects — positioned relative to slope surface
-    // obj.y is a lane offset: 0 = slope center, negative = uphill, positive = downhill
+    // Spawn level objects on the slope surface
     level.objects.forEach((obj) => {
       const textureKey = SpriteManager.getTextureKey(obj.type);
       const isGroundObject = obj.type.startsWith('obstacle_') || obj.type === 'ramp';
@@ -125,32 +119,30 @@ export class SkiPhaseScene extends Phaser.Scene {
       if (isGroundObject) {
         // Ground objects sit on the snow with their base on the surface
         const snowY = this.getSnowSurfaceY(obj.x);
-        const adjustedY = snowY + obj.y;
 
         if (obj.type.startsWith('obstacle_')) {
-          const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
+          const obstacle = this.obstacles.create(obj.x, snowY, textureKey);
           obstacle.setOrigin(0.5, 1);
           obstacle.refreshBody();
           obstacle.setDepth(3);
         } else {
-          const ramp = this.rampGroup.create(obj.x, adjustedY, textureKey);
+          const ramp = this.rampGroup.create(obj.x, snowY, textureKey);
           ramp.setOrigin(0.5, 1);
           ramp.refreshBody();
           ramp.setDepth(3);
         }
       } else {
-        // Collectibles float at the player's ride height
+        // Collectibles sit at the player's ride height on the slope
         const rideY = this.getSlopeSurfaceY(obj.x);
-        const adjustedY = rideY + obj.y;
 
         if (obj.type === 'collectible_coin') {
-          const coin = this.coinGroup.create(obj.x, adjustedY, textureKey);
+          const coin = this.coinGroup.create(obj.x, rideY, textureKey);
           coin.setDepth(3);
         } else if (obj.type === 'collectible_star') {
-          const star = this.starGroup.create(obj.x, adjustedY, textureKey);
+          const star = this.starGroup.create(obj.x, rideY, textureKey);
           star.setDepth(3);
         } else if (obj.type === 'collectible_potion') {
-          const potion = this.potionGroup.create(obj.x, adjustedY, textureKey);
+          const potion = this.potionGroup.create(obj.x, rideY, textureKey);
           potion.setDepth(3);
         }
       }
@@ -312,21 +304,19 @@ export class SkiPhaseScene extends Phaser.Scene {
     // --- Horizontal movement (speed boost / brake) ---
     if (this.cursors.down.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 1.5);
-    } else if (this.cursors.up.isDown) {
+    } else if (this.cursors.left.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 0.5);
     } else {
       this.player.body.setVelocityX(this.skiSpeed);
     }
 
-    // --- Lane steering (left/right moves across the slope) ---
-    if (!this.isAirborne) {
-      if (this.cursors.left.isDown) {
-        this.laneOffset -= this.laneSpeed * dt;
-      } else if (this.cursors.right.isDown) {
-        this.laneOffset += this.laneSpeed * dt;
-      }
-      // Clamp to slope width
-      this.laneOffset = Phaser.Math.Clamp(this.laneOffset, -this.laneRange, this.laneRange);
+    // --- Jump (UP arrow to hop over obstacles) ---
+    if (this.cursors.up.isDown && !this.isAirborne) {
+      this.isAirborne = true;
+      this.trickRotation = 0;
+      this.verticalVelocity = -250;
+      this.airOffset = 1;
+      SoundManager.rampJump();
     }
 
     // --- Vertical (airborne) physics ---
@@ -346,7 +336,7 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     // --- Position the player on the slope surface ---
     const slopeY = this.getSlopeSurfaceY(this.player.x);
-    const targetY = slopeY + this.laneOffset - this.airOffset;
+    const targetY = slopeY - this.airOffset;
     this.player.y = targetY;
     // We set velocity Y to 0 so arcade physics doesn't fight us
     this.player.body.setVelocityY(0);

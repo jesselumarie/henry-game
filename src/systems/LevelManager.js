@@ -6,31 +6,30 @@ export const DEFAULT_SKI_LEVEL = {
   type: 'ski',
   width: 3200,
   height: 600,
-  // y values are lane offsets: 0 = slope center, negative = uphill, positive = downhill
-  // Player can steer between -120 and +120
+  // All objects sit on the slope surface (y=0)
   objects: [
     // Early section — gentle introduction
     { type: 'collectible_coin', x: 300, y: 0 },
-    { type: 'obstacle_tree', x: 500, y: -50 },
-    { type: 'collectible_coin', x: 600, y: 40 },
-    { type: 'obstacle_tree', x: 750, y: 60 },
-    // Mid section — more spread
-    { type: 'collectible_star', x: 850, y: -30 },
-    { type: 'obstacle_rock', x: 950, y: 10 },
-    { type: 'collectible_coin', x: 1050, y: -70 },
+    { type: 'obstacle_tree', x: 500, y: 0 },
+    { type: 'collectible_coin', x: 600, y: 0 },
+    { type: 'obstacle_tree', x: 750, y: 0 },
+    // Mid section
+    { type: 'collectible_star', x: 850, y: 0 },
+    { type: 'obstacle_rock', x: 950, y: 0 },
+    { type: 'collectible_coin', x: 1050, y: 0 },
     { type: 'ramp', x: 1200, y: 0 },
     // Post-ramp
-    { type: 'collectible_potion', x: 1400, y: -20 },
-    { type: 'obstacle_tree', x: 1550, y: 80 },
-    { type: 'collectible_coin', x: 1650, y: -50 },
-    { type: 'obstacle_rock', x: 1800, y: -80 },
+    { type: 'collectible_potion', x: 1400, y: 0 },
+    { type: 'obstacle_tree', x: 1550, y: 0 },
+    { type: 'collectible_coin', x: 1650, y: 0 },
+    { type: 'obstacle_rock', x: 1800, y: 0 },
     // Late section — harder
-    { type: 'collectible_coin', x: 2000, y: 30 },
+    { type: 'collectible_coin', x: 2000, y: 0 },
     { type: 'ramp', x: 2200, y: 0 },
-    { type: 'collectible_potion', x: 2400, y: 40 },
-    { type: 'obstacle_tree', x: 2550, y: -60 },
-    { type: 'collectible_star', x: 2700, y: 50 },
-    { type: 'obstacle_rock', x: 2900, y: -90 },
+    { type: 'collectible_potion', x: 2400, y: 0 },
+    { type: 'obstacle_tree', x: 2550, y: 0 },
+    { type: 'collectible_star', x: 2700, y: 0 },
+    { type: 'obstacle_rock', x: 2900, y: 0 },
   ],
 };
 
