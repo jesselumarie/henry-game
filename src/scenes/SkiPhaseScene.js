@@ -108,26 +108,43 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.rampGroup = this.physics.add.staticGroup();
     this.potionGroup = this.physics.add.staticGroup();
 
-    // Spawn level objects — offset Y along the slope
+    // Spawn level objects — positioned relative to slope surface
+    // obj.y is a lane offset: 0 = slope center, negative = uphill, positive = downhill
     level.objects.forEach((obj) => {
       const textureKey = SpriteManager.getTextureKey(obj.type);
-      const adjustedY = obj.y + this.getSlopeY(obj.x);
+      const isGroundObject = obj.type.startsWith('obstacle_') || obj.type === 'ramp';
 
-      if (obj.type.startsWith('obstacle_')) {
-        const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
-        obstacle.setDepth(3);
-      } else if (obj.type === 'collectible_coin') {
-        const coin = this.coinGroup.create(obj.x, adjustedY, textureKey);
-        coin.setDepth(3);
-      } else if (obj.type === 'collectible_star') {
-        const star = this.starGroup.create(obj.x, adjustedY, textureKey);
-        star.setDepth(3);
-      } else if (obj.type === 'collectible_potion') {
-        const potion = this.potionGroup.create(obj.x, adjustedY, textureKey);
-        potion.setDepth(3);
-      } else if (obj.type === 'ramp') {
-        const ramp = this.rampGroup.create(obj.x, adjustedY, textureKey);
-        ramp.setDepth(3);
+      if (isGroundObject) {
+        // Ground objects sit on the snow with their base on the surface
+        const snowY = this.getSnowSurfaceY(obj.x);
+        const adjustedY = snowY + obj.y;
+
+        if (obj.type.startsWith('obstacle_')) {
+          const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
+          obstacle.setOrigin(0.5, 1);
+          obstacle.refreshBody();
+          obstacle.setDepth(3);
+        } else {
+          const ramp = this.rampGroup.create(obj.x, adjustedY, textureKey);
+          ramp.setOrigin(0.5, 1);
+          ramp.refreshBody();
+          ramp.setDepth(3);
+        }
+      } else {
+        // Collectibles float at the player's ride height
+        const rideY = this.getSlopeSurfaceY(obj.x);
+        const adjustedY = rideY + obj.y;
+
+        if (obj.type === 'collectible_coin') {
+          const coin = this.coinGroup.create(obj.x, adjustedY, textureKey);
+          coin.setDepth(3);
+        } else if (obj.type === 'collectible_star') {
+          const star = this.starGroup.create(obj.x, adjustedY, textureKey);
+          star.setDepth(3);
+        } else if (obj.type === 'collectible_potion') {
+          const potion = this.potionGroup.create(obj.x, adjustedY, textureKey);
+          potion.setDepth(3);
+        }
       }
     });
 
@@ -251,10 +268,15 @@ export class SkiPhaseScene extends Phaser.Scene {
     return x * this.slopeRatio;
   }
 
-  // Get the actual slope surface Y for the player at a given X
-  getSlopeSurfaceY(x) {
+  // Get the Y coordinate of the snow surface at a given X
+  getSnowSurfaceY(x) {
     const { height } = this.cameras.main;
-    return height - 100 + this.getSlopeY(x);
+    return height - 64 + this.getSlopeY(x);
+  }
+
+  // Get the Y for the player center so skis (14px below center) touch the snow
+  getSlopeSurfaceY(x) {
+    return this.getSnowSurfaceY(x) - 14;
   }
 
   update(time, delta) {
