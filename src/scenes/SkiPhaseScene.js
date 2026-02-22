@@ -50,8 +50,16 @@ export class SkiPhaseScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(-10);
 
-    this.mountainBg = this.add
-      .tileSprite(0, 0, width, height, 'mountain-bg')
+    // Far mountains — distant, hazy, slow parallax
+    this.mountainFar = this.add
+      .tileSprite(0, height - 96, width, 96, 'mountain-far')
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(-8);
+
+    // Near mountains — closer, darker, faster parallax
+    this.mountainNear = this.add
+      .tileSprite(0, height - 96, width, 96, 'mountain-near')
       .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(-5);
@@ -189,6 +197,23 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, level.width, worldHeight);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
+    // Falling snow particles (screen-space overlay)
+    this.snowParticles = [];
+    for (let i = 0; i < 40; i++) {
+      const flake = this.add.circle(
+        Phaser.Math.Between(0, width),
+        Phaser.Math.Between(0, height),
+        Phaser.Math.Between(1, 3),
+        0xffffff,
+        Phaser.Math.FloatBetween(0.3, 0.8)
+      );
+      flake.setScrollFactor(0);
+      flake.setDepth(90);
+      flake._snowSpeed = Phaser.Math.FloatBetween(20, 60);
+      flake._snowDrift = Phaser.Math.FloatBetween(-15, 15);
+      this.snowParticles.push(flake);
+    }
+
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
     this.spaceKey = this.input.keyboard.addKey(
@@ -285,19 +310,19 @@ export class SkiPhaseScene extends Phaser.Scene {
     const dt = delta / 1000; // delta in seconds
 
     // --- Horizontal movement (speed boost / brake) ---
-    if (this.cursors.right.isDown) {
+    if (this.cursors.down.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 1.5);
-    } else if (this.cursors.left.isDown) {
+    } else if (this.cursors.up.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 0.5);
     } else {
       this.player.body.setVelocityX(this.skiSpeed);
     }
 
-    // --- Lane steering (up/down moves across the slope, not free-fly) ---
+    // --- Lane steering (left/right moves across the slope) ---
     if (!this.isAirborne) {
-      if (this.cursors.up.isDown) {
+      if (this.cursors.left.isDown) {
         this.laneOffset -= this.laneSpeed * dt;
-      } else if (this.cursors.down.isDown) {
+      } else if (this.cursors.right.isDown) {
         this.laneOffset += this.laneSpeed * dt;
       }
       // Clamp to slope width
@@ -344,10 +369,25 @@ export class SkiPhaseScene extends Phaser.Scene {
     }
 
     // Parallax scrolling (both horizontal and vertical for downhill feel)
-    this.skyBg.tilePositionX = this.cameras.main.scrollX * 0.1;
-    this.skyBg.tilePositionY = this.cameras.main.scrollY * 0.05;
-    this.mountainBg.tilePositionX = this.cameras.main.scrollX * 0.3;
-    this.mountainBg.tilePositionY = this.cameras.main.scrollY * 0.15;
+    this.skyBg.tilePositionX = this.cameras.main.scrollX * 0.05;
+    this.skyBg.tilePositionY = this.cameras.main.scrollY * 0.02;
+    this.mountainFar.tilePositionX = this.cameras.main.scrollX * 0.15;
+    this.mountainFar.tilePositionY = this.cameras.main.scrollY * 0.05;
+    this.mountainNear.tilePositionX = this.cameras.main.scrollX * 0.3;
+    this.mountainNear.tilePositionY = this.cameras.main.scrollY * 0.1;
+
+    // Update falling snow
+    const { width: vw, height: vh } = this.cameras.main;
+    for (const flake of this.snowParticles) {
+      flake.y += flake._snowSpeed * dt;
+      flake.x += flake._snowDrift * dt;
+      if (flake.y > vh) {
+        flake.y = -4;
+        flake.x = Phaser.Math.Between(0, vw);
+      }
+      if (flake.x < -4) flake.x = vw + 4;
+      if (flake.x > vw + 4) flake.x = -4;
+    }
 
     // Check finish
     if (this.player.x >= this.finishX) {
