@@ -221,37 +221,142 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(24, 22, 6, 2);
     });
 
-    // Sky background
-    this.createPixelSprite('sky-bg', 64, 64, (ctx) => {
-      ctx.fillStyle = '#88bbee';
-      ctx.fillRect(0, 0, 64, 64);
-      // Clouds
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(8, 10, 20, 6);
-      ctx.fillRect(12, 8, 12, 2);
-      ctx.fillRect(40, 20, 16, 4);
-      ctx.fillRect(44, 18, 8, 2);
+    // Sky background — gradient from deep blue to pale horizon
+    this.createPixelSprite('sky-bg', 64, 128, (ctx) => {
+      const topR = 0x44, topG = 0x77, topB = 0xcc;
+      const botR = 0xcc, botG = 0xdd, botB = 0xee;
+      for (let y = 0; y < 128; y++) {
+        const t = y / 127;
+        const r = Math.round(topR + (botR - topR) * t);
+        const g = Math.round(topG + (botG - topG) * t);
+        const b = Math.round(topB + (botB - topB) * t);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(0, y, 64, 1);
+      }
+      // Wispy clouds
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(8, 18, 22, 4);
+      ctx.fillRect(10, 16, 16, 2);
+      ctx.fillRect(12, 22, 10, 2);
+      ctx.fillRect(42, 30, 18, 3);
+      ctx.fillRect(44, 28, 12, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillRect(4, 50, 14, 3);
+      ctx.fillRect(30, 42, 20, 3);
     });
 
-    // Mountain background
-    this.createPixelSprite('mountain-bg', 128, 64, (ctx) => {
-      ctx.fillStyle = '#88bbee';
-      ctx.fillRect(0, 0, 128, 64);
-      // Mountains
-      ctx.fillStyle = '#667788';
-      for (let i = 0; i < 64; i++) {
-        ctx.fillRect(0 + i, 64 - i, 1, i);
+    // Far mountain layer — distant, lighter, hazy
+    this.createPixelSprite('mountain-far', 256, 96, (ctx) => {
+      // Transparent sky
+      ctx.clearRect(0, 0, 256, 96);
+      // Distant mountains — muted blue-gray, soft shapes
+      const farColor = '#8899aa';
+      const farSnow = '#bbc8d4';
+      // Mountain 1 — broad, gentle
+      ctx.fillStyle = farColor;
+      for (let i = 0; i < 80; i++) {
+        const h = Math.round(50 * Math.pow(1 - Math.abs(i - 40) / 40, 1.2));
+        ctx.fillRect(i, 96 - h, 1, h);
       }
-      for (let i = 0; i < 48; i++) {
-        ctx.fillRect(60 + i, 64 - i, 1, i);
+      // Snow cap
+      ctx.fillStyle = farSnow;
+      for (let i = 25; i < 55; i++) {
+        const h = Math.round(50 * Math.pow(1 - Math.abs(i - 40) / 40, 1.2));
+        if (h > 35) ctx.fillRect(i, 96 - h, 1, Math.min(6, h - 35));
       }
-      for (let i = 0; i < 48; i++) {
-        ctx.fillRect(60 + 48 - i, 64 - i, 1, i);
+      // Mountain 2 — taller, narrower
+      ctx.fillStyle = farColor;
+      for (let i = 0; i < 60; i++) {
+        const h = Math.round(65 * Math.pow(1 - Math.abs(i - 30) / 30, 1.4));
+        ctx.fillRect(90 + i, 96 - h, 1, h);
       }
-      // Snow caps
-      ctx.fillStyle = '#ffffff';
-      for (let i = 0; i < 15; i++) {
-        ctx.fillRect(48 + i, 64 - 48 - i + 48 - 15, 1, 2);
+      ctx.fillStyle = farSnow;
+      for (let i = 15; i < 45; i++) {
+        const h = Math.round(65 * Math.pow(1 - Math.abs(i - 30) / 30, 1.4));
+        if (h > 48) ctx.fillRect(90 + i, 96 - h, 1, Math.min(8, h - 48));
+      }
+      // Mountain 3 — medium
+      ctx.fillStyle = farColor;
+      for (let i = 0; i < 70; i++) {
+        const h = Math.round(42 * Math.pow(1 - Math.abs(i - 35) / 35, 1.3));
+        ctx.fillRect(170 + i, 96 - h, 1, h);
+      }
+      ctx.fillStyle = farSnow;
+      for (let i = 20; i < 50; i++) {
+        const h = Math.round(42 * Math.pow(1 - Math.abs(i - 35) / 35, 1.3));
+        if (h > 30) ctx.fillRect(170 + i, 96 - h, 1, Math.min(5, h - 30));
+      }
+      // Haze at base
+      for (let y = 70; y < 96; y++) {
+        const alpha = ((y - 70) / 26) * 0.15;
+        ctx.fillStyle = `rgba(180,200,220,${alpha})`;
+        ctx.fillRect(0, y, 256, 1);
+      }
+    });
+
+    // Near mountain layer — closer, darker, more detail
+    this.createPixelSprite('mountain-near', 256, 96, (ctx) => {
+      ctx.clearRect(0, 0, 256, 96);
+      const nearColor = '#556677';
+      const nearShadow = '#445566';
+      const nearSnow = '#dde4ea';
+      // Mountain A — large, left-heavy ridge
+      ctx.fillStyle = nearColor;
+      for (let i = 0; i < 100; i++) {
+        const peak = 40 + 15 * Math.sin(i * 0.08);
+        const h = Math.round(peak * Math.pow(1 - Math.abs(i - 50) / 50, 1.1));
+        ctx.fillRect(i, 96 - h, 1, h);
+      }
+      // Shadow side
+      ctx.fillStyle = nearShadow;
+      for (let i = 50; i < 100; i++) {
+        const peak = 40 + 15 * Math.sin(i * 0.08);
+        const h = Math.round(peak * Math.pow(1 - Math.abs(i - 50) / 50, 1.1));
+        if (h > 5) ctx.fillRect(i, 96 - h + 3, 1, Math.max(1, h / 3));
+      }
+      // Snow cap
+      ctx.fillStyle = nearSnow;
+      for (let i = 30; i < 70; i++) {
+        const peak = 40 + 15 * Math.sin(i * 0.08);
+        const h = Math.round(peak * Math.pow(1 - Math.abs(i - 50) / 50, 1.1));
+        if (h > 35) ctx.fillRect(i, 96 - h, 1, Math.min(6, h - 35));
+      }
+      // Mountain B — jagged peak
+      ctx.fillStyle = nearColor;
+      for (let i = 0; i < 80; i++) {
+        const jagged = 2 * Math.sin(i * 0.5);
+        const h = Math.round((55 + jagged) * Math.pow(1 - Math.abs(i - 40) / 40, 1.5));
+        ctx.fillRect(120 + i, 96 - h, 1, h);
+      }
+      ctx.fillStyle = nearShadow;
+      for (let i = 40; i < 80; i++) {
+        const jagged = 2 * Math.sin(i * 0.5);
+        const h = Math.round((55 + jagged) * Math.pow(1 - Math.abs(i - 40) / 40, 1.5));
+        if (h > 5) ctx.fillRect(120 + i, 96 - h + 2, 1, Math.max(1, h / 4));
+      }
+      ctx.fillStyle = nearSnow;
+      for (let i = 22; i < 58; i++) {
+        const jagged = 2 * Math.sin(i * 0.5);
+        const h = Math.round((55 + jagged) * Math.pow(1 - Math.abs(i - 40) / 40, 1.5));
+        if (h > 40) ctx.fillRect(120 + i, 96 - h, 1, Math.min(8, h - 40));
+      }
+      // Mountain C — small foothill
+      ctx.fillStyle = nearColor;
+      for (let i = 0; i < 50; i++) {
+        const h = Math.round(25 * Math.pow(1 - Math.abs(i - 25) / 25, 1.2));
+        ctx.fillRect(210 + i, 96 - h, 1, h);
+      }
+      // Pine tree silhouettes along the base
+      ctx.fillStyle = '#334455';
+      for (let tx = 5; tx < 256; tx += 18 + Math.round(Math.sin(tx) * 6)) {
+        const treeH = 10 + Math.round(Math.abs(Math.sin(tx * 0.3)) * 8);
+        // Trunk
+        ctx.fillRect(tx + 2, 96 - 3, 2, 3);
+        // Foliage triangles
+        for (let r = 0; r < treeH; r++) {
+          const w = Math.max(1, Math.round((treeH - r) * 0.6));
+          ctx.fillRect(tx + 3 - w, 96 - 3 - r, w * 2, 1);
+        }
       }
     });
 
