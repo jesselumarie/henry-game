@@ -310,23 +310,23 @@ export class SkiPhaseScene extends Phaser.Scene {
     const dt = delta / 1000; // delta in seconds
 
     // --- Horizontal movement (speed boost / brake) ---
-    if (this.cursors.down.isDown) {
+    if (this.cursors.right.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 1.5);
-    } else if (this.cursors.up.isDown) {
+    } else if (this.cursors.left.isDown) {
       this.player.body.setVelocityX(this.skiSpeed * 0.5);
     } else {
       this.player.body.setVelocityX(this.skiSpeed);
     }
 
-    // --- Lane steering (left/right moves across the slope) ---
+    // --- Lane steering (up/down moves across the slope) ---
     if (!this.isAirborne) {
-      if (this.cursors.left.isDown) {
+      if (this.cursors.up.isDown) {
         this.laneOffset -= this.laneSpeed * dt;
-      } else if (this.cursors.right.isDown) {
+      } else if (this.cursors.down.isDown) {
         this.laneOffset += this.laneSpeed * dt;
       }
-      // Clamp to slope width
-      this.laneOffset = Phaser.Math.Clamp(this.laneOffset, -this.laneRange, this.laneRange);
+      // Clamp to snow surface — player can only go airborne via ramps
+      this.laneOffset = Phaser.Math.Clamp(this.laneOffset, 0, this.laneRange);
     }
 
     // --- Vertical (airborne) physics ---
