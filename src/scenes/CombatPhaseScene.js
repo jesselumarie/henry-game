@@ -556,9 +556,9 @@ export class CombatPhaseScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Timing bar
+    // Timing bar - wider blue zone for easier timing
     const barBg = this.add.rectangle(0, 10, 300, 20, 0x333333);
-    const sweetSpot = this.add.rectangle(0, 10, 60, 20, 0x4488ff, 0.6);
+    const sweetSpot = this.add.rectangle(0, 10, 90, 20, 0x4488ff, 0.6);
     const marker = this.add.rectangle(-150, 10, 6, 24, 0xffffff);
 
     this.qteContainer.add([bg, label, barBg, sweetSpot, marker]);
@@ -572,10 +572,16 @@ export class CombatPhaseScene extends Phaser.Scene {
     const handler = () => {
       if (done) return;
       done = true;
-      // Center of sweet spot is at x=0, bar spans -150 to 150
+      // Blue zone spans -45 to +45 (90px wide), center at 0
       const dist = Math.abs(markerX);
-      // Score: 1.0 at center, 0.0 at edges (150px away)
-      const score = Math.max(0, 1 - dist / 150);
+      let score;
+      if (dist <= 45) {
+        // Inside the blue zone: score 0.7 to 1.0
+        score = 1 - (dist / 45) * 0.3;
+      } else {
+        // Outside the blue zone: score drops off quickly
+        score = Math.max(0, 0.7 - (dist - 45) / 105 * 0.7);
+      }
       this.finishDefendQTE(score);
     };
 
@@ -604,17 +610,41 @@ export class CombatPhaseScene extends Phaser.Scene {
   finishDefendQTE(score) {
     this.qteContainer.setVisible(false);
 
-    // Damage reduction: 0% at edges (score=0) to 70% at center (score=1)
-    const reduction = Math.round(score * 70);
-    this.defendMultiplier = 1 - (score * 0.7);
+    // Damage reduction: up to 95% for perfect, strong reduction in blue zone
+    let reduction;
+    if (score > 0.9) {
+      reduction = 95;
+    } else if (score > 0.7) {
+      reduction = Math.round(70 + (score - 0.7) * 125);
+    } else {
+      reduction = Math.round(score * 100);
+    }
+    this.defendMultiplier = 1 - reduction / 100;
 
     const qualityText =
       score > 0.9 ? 'PERFECT BLOCK!' :
-      score > 0.6 ? 'GREAT BLOCK!' :
-      score > 0.3 ? 'OK BLOCK' :
+      score > 0.7 ? 'GREAT BLOCK!' :
+      score > 0.4 ? 'OK BLOCK' :
       'WEAK BLOCK...';
 
-    this.logText.setText(`${qualityText} Damage reduced by ${reduction}%`);
+    // Perfect block heals 10 HP
+    let healText = '';
+    if (score > 0.9) {
+      const oldHp = this.playerHp;
+      this.playerHp = Math.min(this.playerMaxHp, this.playerHp + 10);
+      const healed = this.playerHp - oldHp;
+      if (healed > 0) {
+        this.updateHpBar(this.playerHpBar, this.playerHp, this.playerMaxHp);
+        healText = ` +${healed} HP!`;
+        this.playerSprite.setTint(0x4488ff);
+        this.time.delayedCall(400, () => this.playerSprite.clearTint());
+      }
+    }
+
+    this.logText.setText(`${qualityText} Block ${reduction}%!${healText}`);
+    if (score > 0.7) {
+      SoundManager.qteSuccess();
+    }
 
     this.time.delayedCall(800, () => {
       this.enemyTurn();
@@ -707,9 +737,11 @@ export class CombatPhaseScene extends Phaser.Scene {
     }
 
     let totalDamage = 0;
+    let rawDamage = 0;
     aliveEnemies.forEach((enemy) => {
       let dmg = Phaser.Math.Between(5, 15);
       if (enemy.type === 'enemy_strong') dmg = Phaser.Math.Between(10, 25);
+      rawDamage += dmg;
       if (this.isDefending) dmg = Math.round(dmg * this.defendMultiplier);
       totalDamage += dmg;
 
@@ -724,16 +756,25 @@ export class CombatPhaseScene extends Phaser.Scene {
 
     this.playerHp -= totalDamage;
     this.updateHpBar(this.playerHpBar, this.playerHp, this.playerMaxHp);
+    const wasDefending = this.isDefending;
+    const blockedAmount = wasDefending ? Math.round(rawDamage - totalDamage) : 0;
     this.isDefending = false;
     this.defendMultiplier = 1;
 
-    this.logText.setText(`Enemies attack for ${totalDamage} damage!`);
-    SoundManager.enemyAttack();
-    this.time.delayedCall(150, () => SoundManager.playerHurt());
-
-    // Flash player
-    this.playerSprite.setTint(0xff4444);
-    this.time.delayedCall(300, () => this.playerSprite.clearTint());
+    if (wasDefending && blockedAmount > 0) {
+      this.logText.setText(`BLOCKED! ${rawDamage} → ${totalDamage} damage! (${blockedAmount} blocked)`);
+      SoundManager.enemyAttack();
+      // Blue flash to show block
+      this.playerSprite.setTint(0x4488ff);
+      this.time.delayedCall(400, () => this.playerSprite.clearTint());
+    } else {
+      this.logText.setText(`Enemies attack for ${totalDamage} damage!`);
+      SoundManager.enemyAttack();
+      this.time.delayedCall(150, () => SoundManager.playerHurt());
+      // Red flash for unblocked hit
+      this.playerSprite.setTint(0xff4444);
+      this.time.delayedCall(300, () => this.playerSprite.clearTint());
+    }
 
     // Check defeat
     if (this.playerHp <= 0) {
