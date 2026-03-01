@@ -118,7 +118,13 @@ export class SkiPhaseScene extends Phaser.Scene {
 
     // Spawn level objects — positioned relative to slope surface
     // obj.y is a lane offset: 0 = slope center, negative = uphill, positive = downhill
+    // Obstacle types that should not appear on snow terrain
+    const snowExcludedObstacles = ['obstacle_rock'];
+
     level.objects.forEach((obj) => {
+      // Skip obstacles that don't belong in snow
+      if (snowExcludedObstacles.includes(obj.type)) return;
+
       const textureKey = SpriteManager.getTextureKey(obj.type);
       const isGroundObject = obj.type.startsWith('obstacle_') || obj.type === 'ramp';
 

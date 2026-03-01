@@ -16,21 +16,21 @@ export const DEFAULT_SKI_LEVEL = {
     { type: 'obstacle_tree', x: 750, y: 60 },
     // Mid section — more spread
     { type: 'collectible_star', x: 850, y: -30 },
-    { type: 'obstacle_rock', x: 950, y: 10 },
+    { type: 'obstacle_tree', x: 950, y: 10 },
     { type: 'collectible_coin', x: 1050, y: -70 },
     { type: 'ramp', x: 1200, y: 0 },
     // Post-ramp
     { type: 'collectible_potion', x: 1400, y: -20 },
     { type: 'obstacle_tree', x: 1550, y: 80 },
     { type: 'collectible_coin', x: 1650, y: -50 },
-    { type: 'obstacle_rock', x: 1800, y: -80 },
+    { type: 'obstacle_tree', x: 1800, y: -80 },
     // Late section — harder
     { type: 'collectible_coin', x: 2000, y: 30 },
     { type: 'ramp', x: 2200, y: 0 },
     { type: 'collectible_potion', x: 2400, y: 40 },
     { type: 'obstacle_tree', x: 2550, y: -60 },
     { type: 'collectible_star', x: 2700, y: 50 },
-    { type: 'obstacle_rock', x: 2900, y: -90 },
+    { type: 'obstacle_tree', x: 2900, y: -90 },
   ],
 };
 

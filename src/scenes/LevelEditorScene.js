@@ -5,7 +5,6 @@ import { SpriteManager, SPRITE_ROLES } from '../systems/SpriteManager.js';
 const GRID_SIZE = 32;
 const PLACEABLE_OBJECTS = [
   { type: 'obstacle_tree', name: 'Tree', category: 'ski' },
-  { type: 'obstacle_rock', name: 'Rock', category: 'ski' },
   { type: 'collectible_coin', name: 'Coin', category: 'ski' },
   { type: 'collectible_star', name: 'Star', category: 'ski' },
   { type: 'ramp', name: 'Ramp', category: 'ski' },
