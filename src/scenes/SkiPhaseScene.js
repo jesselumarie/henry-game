@@ -351,8 +351,16 @@ export class SkiPhaseScene extends Phaser.Scene {
     // We set velocity Y to 0 so arcade physics doesn't fight us
     this.player.body.setVelocityY(0);
 
-    // --- Trick while airborne ---
-    if (this.isAirborne && this.spaceKey.isDown) {
+    // --- Jump / Trick ---
+    if (!this.isAirborne && Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+      // Jump off the ground
+      this.isAirborne = true;
+      this.trickRotation = 0;
+      this.verticalVelocity = -250;
+      this.airOffset = 1;
+      this.showStatus('JUMP!');
+      SoundManager.jump();
+    } else if (this.isAirborne && this.spaceKey.isDown) {
       this.trickRotation += 5;
       this.player.setAngle(this.trickRotation);
       if (this.trickRotation >= 360) {
