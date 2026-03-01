@@ -167,6 +167,10 @@ export const SoundManager = {
     playTone(120, 0.2, 'sawtooth', 0.35);
   },
 
+  jump() {
+    playSweep(300, 600, 0.15, 'sine', 0.25);
+  },
+
   rampJump() {
     playSweep(200, 800, 0.3, 'sine', 0.3);
   },
