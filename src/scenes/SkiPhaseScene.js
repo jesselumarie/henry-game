@@ -39,6 +39,7 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.verticalVelocity = 0;  // current vertical speed (negative = going up)
     this.gravity = 600;         // gravity pull (px/s^2)
     this.airOffset = 0;         // how far above the slope surface the player is
+    this.trickRotationSpeed = 480; // degrees per second for backflip
 
     // Set world bounds to accommodate the slope
     this.physics.world.setBounds(0, 0, level.width, worldHeight);
@@ -340,6 +341,24 @@ export class SkiPhaseScene extends Phaser.Scene {
         this.airOffset = 0;
         this.verticalVelocity = 0;
         this.isAirborne = false;
+
+        // Handle incomplete backflip on landing
+        if (this.trickRotation > 0) {
+          if (this.trickRotation >= 270) {
+            // Close enough — auto-complete the backflip
+            this.tricks++;
+            this.score += 100;
+            this.showStatus('BACKFLIP! +100');
+            SoundManager.trickComplete();
+          } else {
+            // Bail — landed on head
+            this.score = Math.max(0, this.score - 50);
+            this.showStatus('BAIL! -50');
+            SoundManager.obstacleHit();
+          }
+          this.trickRotation = 0;
+        }
+
         this.player.setAngle(this.downhillAngle);
       }
     }
@@ -356,19 +375,20 @@ export class SkiPhaseScene extends Phaser.Scene {
       // Jump off the ground
       this.isAirborne = true;
       this.trickRotation = 0;
-      this.verticalVelocity = -250;
+      this.verticalVelocity = -300;
       this.airOffset = 1;
       this.showStatus('JUMP!');
       SoundManager.jump();
     } else if (this.isAirborne && this.spaceKey.isDown) {
-      this.trickRotation += 5;
-      this.player.setAngle(this.trickRotation);
+      // Backflip: counter-clockwise rotation (negative angle)
+      this.trickRotation += this.trickRotationSpeed * dt;
+      this.player.setAngle(this.downhillAngle - this.trickRotation);
       if (this.trickRotation >= 360) {
         this.tricks++;
         this.score += 100;
         this.trickRotation = 0;
-        this.player.setAngle(0);
-        this.showStatus('TRICK! +100');
+        this.player.setAngle(this.downhillAngle);
+        this.showStatus('BACKFLIP! +100');
         SoundManager.trickComplete();
       }
     } else if (!this.isAirborne) {
