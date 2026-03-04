@@ -116,19 +116,25 @@ export class SkiPhaseScene extends Phaser.Scene {
     this.starGroup = this.physics.add.staticGroup();
     this.rampGroup = this.physics.add.staticGroup();
     this.potionGroup = this.physics.add.staticGroup();
+    this.trapHoleGroup = this.physics.add.staticGroup();
 
     // Spawn level objects — positioned relative to slope surface
     // obj.y is a lane offset: 0 = slope center, negative = uphill, positive = downhill
     level.objects.forEach((obj) => {
       const textureKey = SpriteManager.getTextureKey(obj.type);
-      const isGroundObject = obj.type.startsWith('obstacle_') || obj.type === 'ramp';
+      const isGroundObject = obj.type.startsWith('obstacle_') || obj.type === 'ramp' || obj.type === 'trap_hole';
 
       if (isGroundObject) {
         // Ground objects sit on the snow with their base on the surface
         const snowY = this.getSnowSurfaceY(obj.x);
         const adjustedY = snowY + obj.y;
 
-        if (obj.type.startsWith('obstacle_')) {
+        if (obj.type === 'trap_hole') {
+          const hole = this.trapHoleGroup.create(obj.x, adjustedY, textureKey);
+          hole.setOrigin(0.5, 1);
+          hole.refreshBody();
+          hole.setDepth(3);
+        } else if (obj.type.startsWith('obstacle_')) {
           const obstacle = this.obstacles.create(obj.x, adjustedY, textureKey);
           obstacle.setOrigin(0.5, 1);
           obstacle.refreshBody();
@@ -190,6 +196,13 @@ export class SkiPhaseScene extends Phaser.Scene {
       this.player,
       this.rampGroup,
       this.hitRamp,
+      null,
+      this
+    );
+    this.physics.add.overlap(
+      this.player,
+      this.trapHoleGroup,
+      this.hitTrapHole,
       null,
       this
     );
@@ -480,6 +493,33 @@ export class SkiPhaseScene extends Phaser.Scene {
     // Launch upward off the slope
     this.verticalVelocity = -350;
     this.airOffset = 1; // start just above ground so we're immediately airborne
+  }
+
+  hitTrapHole(player, hole) {
+    if (this.isAirborne) return; // jumped over it!
+
+    this.score = Math.max(0, this.score - 100);
+    this.showStatus('TRAP HOLE! -100');
+    SoundManager.trapHoleFall();
+
+    // Freeze the player briefly as they "fall in"
+    player.body.setVelocityX(0);
+    player.setTint(0x444466);
+
+    // Brief sink animation then recover
+    this.tweens.add({
+      targets: player,
+      y: player.y + 20,
+      duration: 300,
+      yoyo: true,
+      ease: 'Power2',
+      onComplete: () => {
+        if (!this.gameOver) {
+          player.clearTint();
+          player.body.setVelocityX(this.skiSpeed);
+        }
+      },
+    });
   }
 
   showStatus(text) {

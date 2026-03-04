@@ -11,6 +11,7 @@ export const SPRITE_ROLES = {
   collectible_star: { name: 'Star', defaultKey: 'collectible-star', size: 16 },
   collectible_potion: { name: 'Health Potion', defaultKey: 'collectible-potion', size: 16 },
   ramp: { name: 'Ramp', defaultKey: 'ramp', size: 32 },
+  trap_hole: { name: 'Trap Hole', defaultKey: 'trap-hole', size: 32 },
 };
 
 export class SpriteManager {
