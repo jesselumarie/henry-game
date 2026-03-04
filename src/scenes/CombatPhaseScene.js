@@ -395,63 +395,73 @@ export class CombatPhaseScene extends Phaser.Scene {
   }
 
   runSequenceQTE() {
-    // Press the correct sequence of keys
-    const keys = ['A', 'S', 'D', 'W'];
-    const sequence = [];
-    for (let i = 0; i < 4; i++) {
-      sequence.push(keys[Phaser.Math.Between(0, keys.length - 1)]);
-    }
+    // Mash space bar to fill the meter
+    const totalPresses = 8;
+    let presses = 0;
 
     const bg = this.add.rectangle(0, 0, 350, 120, 0x000000, 0.8);
     const label = this.add
-      .text(0, -40, 'TYPE THE SEQUENCE!', {
+      .text(0, -40, 'MASH SPACE!', {
         fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#ffee00',
       })
       .setOrigin(0.5);
-    const seqDisplay = this.add
-      .text(0, 0, sequence.join('  '), {
-        fontSize: '28px',
+
+    // Progress bar background
+    const barWidth = 260;
+    const barHeight = 24;
+    const barBg = this.add.rectangle(0, 0, barWidth, barHeight, 0x333333);
+    const barFill = this.add.rectangle(
+      -barWidth / 2,
+      0,
+      0,
+      barHeight,
+      0x00ff88
+    ).setOrigin(0, 0.5);
+
+    const counterText = this.add
+      .text(0, 0, `${presses}/${totalPresses}`, {
+        fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#ffffff',
       })
       .setOrigin(0.5);
+
     const timerText = this.add
-      .text(0, 35, '4.0s', {
+      .text(0, 35, '3.0s', {
         fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#aaaaaa',
       })
       .setOrigin(0.5);
 
-    this.qteContainer.add([bg, label, seqDisplay, timerText]);
+    this.qteContainer.add([bg, label, barBg, barFill, counterText, timerText]);
 
-    let currentIdx = 0;
     const startTime = Date.now();
-    const duration = 4000;
+    const duration = 3000;
 
-    const keyHandler = (event) => {
-      if (currentIdx >= sequence.length) return;
-      if (event.key.toUpperCase() === sequence[currentIdx]) {
-        currentIdx++;
-        // Update display to show progress
-        const display = sequence
-          .map((k, i) => (i < currentIdx ? '.' : k))
-          .join('  ');
-        seqDisplay.setText(display);
+    const spaceKey = this.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.SPACE
+    );
 
-        if (currentIdx >= sequence.length) {
-          this.input.keyboard.off('keydown', keyHandler);
-          timer.remove();
-          const elapsed = Date.now() - startTime;
-          const score = Math.max(0.3, 1 - elapsed / duration);
-          this.finishQTE(score);
-        }
+    const handler = () => {
+      if (presses >= totalPresses) return;
+      presses++;
+      const progress = presses / totalPresses;
+      barFill.width = barWidth * progress;
+      counterText.setText(`${presses}/${totalPresses}`);
+
+      if (presses >= totalPresses) {
+        spaceKey.off('down', handler);
+        timer.remove();
+        const elapsed = Date.now() - startTime;
+        const score = Math.max(0.3, 1 - elapsed / duration);
+        this.finishQTE(score);
       }
     };
 
-    this.input.keyboard.on('keydown', keyHandler);
+    spaceKey.on('down', handler);
 
     const timer = this.time.addEvent({
       delay: 50,
@@ -463,8 +473,8 @@ export class CombatPhaseScene extends Phaser.Scene {
 
         if (elapsed >= duration) {
           timer.remove();
-          this.input.keyboard.off('keydown', keyHandler);
-          const score = currentIdx / sequence.length;
+          spaceKey.off('down', handler);
+          const score = presses / totalPresses;
           this.finishQTE(score * 0.5);
         }
       },
