@@ -24,13 +24,13 @@ export const WEAPONS = {
   staff: {
     id: 'staff',
     name: 'Battle Staff',
-    description: 'Long reach, sweeping attacks.',
+    description: 'Long reach, sweeping attacks. Type numbers to fight!',
     damage: 12,
     speed: 0.8,
     range: 120,
     unlockCondition: { type: 'score', amount: 500 },
     spriteKey: 'weapon-staff',
-    qteType: 'sequence', // press buttons in order
+    qteType: 'sequence', // type number sequence
   },
   snowball: {
     id: 'snowball',
