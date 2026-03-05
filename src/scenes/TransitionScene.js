@@ -20,7 +20,6 @@ export class TransitionScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.cameras.main;
-    const saveData = SaveSystem.load();
 
     // Update save data
     const runCount = SaveSystem.incrementRuns();
@@ -31,12 +30,14 @@ export class TransitionScene extends Phaser.Scene {
     const newUnlocks = WeaponSystem.checkUnlocks(updatedSave);
     newUnlocks.forEach((w) => SaveSystem.unlockWeapon(w.id));
 
+    const playerLevel = WeaponSystem.getPlayerLevel(updatedSave.totalRuns);
+
     // Background
     this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
 
     // Title
     this.add
-      .text(width / 2, 40, 'RUN COMPLETE!', {
+      .text(width / 2, 30, 'RUN COMPLETE!', {
         fontSize: '32px',
         fontFamily: 'Courier New',
         color: '#44ee88',
@@ -45,9 +46,41 @@ export class TransitionScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    // Player Level display
+    this.add
+      .text(width / 2, 65, `LEVEL ${playerLevel}`, {
+        fontSize: '22px',
+        fontFamily: 'Courier New',
+        color: '#ffcc00',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
+
+    // Next level info
+    const nextInfo = WeaponSystem.getNextLevelInfo(playerLevel);
+    if (nextInfo) {
+      const runsNeeded = nextInfo.runsRequired - updatedSave.totalRuns;
+      this.add
+        .text(width / 2, 88, `${runsNeeded} more run${runsNeeded !== 1 ? 's' : ''} to Level ${nextInfo.level} — unlocks ${nextInfo.weapon.name}!`, {
+          fontSize: '11px',
+          fontFamily: 'Courier New',
+          color: '#aabbcc',
+        })
+        .setOrigin(0.5);
+    } else {
+      this.add
+        .text(width / 2, 88, 'MAX LEVEL — All weapons unlocked!', {
+          fontSize: '11px',
+          fontFamily: 'Courier New',
+          color: '#ffee88',
+        })
+        .setOrigin(0.5);
+    }
+
     // Stats
     const statsStyle = {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: 'Courier New',
       color: '#ffffff',
     };
@@ -63,7 +96,7 @@ export class TransitionScene extends Phaser.Scene {
 
     stats.forEach((text, i) => {
       const t = this.add
-        .text(width / 2, 100 + i * 32, text, statsStyle)
+        .text(width / 2, 115 + i * 26, text, statsStyle)
         .setOrigin(0.5)
         .setAlpha(0);
 
@@ -77,11 +110,11 @@ export class TransitionScene extends Phaser.Scene {
     });
 
     // New unlock notifications
+    const unlockBaseY = 115 + stats.length * 26 + 10;
     if (newUnlocks.length > 0) {
-      const unlockY = 100 + stats.length * 32 + 20;
       this.add
-        .text(width / 2, unlockY, 'NEW WEAPON UNLOCKED!', {
-          fontSize: '22px',
+        .text(width / 2, unlockBaseY, 'NEW WEAPON UNLOCKED!', {
+          fontSize: '20px',
           fontFamily: 'Courier New',
           color: '#ffcc00',
           stroke: '#000000',
@@ -93,10 +126,10 @@ export class TransitionScene extends Phaser.Scene {
         this.add
           .text(
             width / 2,
-            unlockY + 30 + i * 24,
+            unlockBaseY + 26 + i * 22,
             `${weapon.name}: ${weapon.description}`,
             {
-              fontSize: '14px',
+              fontSize: '12px',
               fontFamily: 'Courier New',
               color: '#ffee88',
             }
@@ -107,23 +140,24 @@ export class TransitionScene extends Phaser.Scene {
 
     // Weapon selection for combat
     const reloadedSave = SaveSystem.load();
+    const availableWeapons = WeaponSystem.getWeaponsForLevel(playerLevel);
     const weaponY = 380;
 
     this.add
-      .text(width / 2, weaponY, 'CHOOSE YOUR WEAPON:', {
-        fontSize: '18px',
+      .text(width / 2, weaponY - 10, 'CHOOSE YOUR WEAPON:', {
+        fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#aaccee',
       })
       .setOrigin(0.5);
 
-    let weaponIndex = 0;
-    reloadedSave.unlockedWeapons.forEach((weaponId) => {
-      const weapon = WeaponSystem.getWeapon(weaponId);
-      if (!weapon) return;
+    const weaponSpacing = Math.min(150, (width - 60) / availableWeapons.length);
+    const totalWeaponWidth = (availableWeapons.length - 1) * weaponSpacing;
+    const weaponStartX = width / 2 - totalWeaponWidth / 2;
 
-      const btnX = 120 + weaponIndex * 180;
-      const btnY = weaponY + 60;
+    availableWeapons.forEach((weapon, i) => {
+      const btnX = weaponStartX + i * weaponSpacing;
+      const btnY = weaponY + 40;
 
       // Weapon icon
       this.add.image(btnX, btnY - 10, weapon.spriteKey).setScale(2);
@@ -131,20 +165,29 @@ export class TransitionScene extends Phaser.Scene {
       // Weapon button
       const btn = this.add
         .text(btnX, btnY + 20, weapon.name, {
-          fontSize: '14px',
+          fontSize: '12px',
           fontFamily: 'Courier New',
           color: '#ffffff',
           backgroundColor: '#335577',
-          padding: { x: 12, y: 6 },
+          padding: { x: 8, y: 5 },
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
-      const desc = this.add
-        .text(btnX, btnY + 50, `DMG:${weapon.damage} SPD:${weapon.speed}`, {
-          fontSize: '10px',
+      this.add
+        .text(btnX, btnY + 45, `DMG:${weapon.damage} SPD:${weapon.speed}`, {
+          fontSize: '9px',
           fontFamily: 'Courier New',
           color: '#8899aa',
+        })
+        .setOrigin(0.5);
+
+      // Level badge
+      this.add
+        .text(btnX, btnY - 30, `Lv${weapon.level}`, {
+          fontSize: '9px',
+          fontFamily: 'Courier New',
+          color: '#ffcc00',
         })
         .setOrigin(0.5);
 
@@ -159,14 +202,12 @@ export class TransitionScene extends Phaser.Scene {
         SoundManager.buttonClick();
         this.startCombat(weapon, this.skiResults);
       });
-
-      weaponIndex++;
     });
 
     // Skip combat button
     this.add
-      .text(width / 2, height - 40, 'Skip to Menu', {
-        fontSize: '14px',
+      .text(width / 2, height - 30, 'Skip to Menu', {
+        fontSize: '12px',
         fontFamily: 'Courier New',
         color: '#667788',
       })
@@ -191,10 +232,10 @@ export class TransitionScene extends Phaser.Scene {
     this.add
       .text(
         width / 2,
-        weaponY + 100,
+        weaponY + 80,
         bonusLine + potionLine,
         {
-          fontSize: '12px',
+          fontSize: '10px',
           fontFamily: 'Courier New',
           color: '#88cc88',
         }

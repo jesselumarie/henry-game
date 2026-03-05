@@ -1,49 +1,69 @@
 export const WEAPONS = {
-  fists: {
-    id: 'fists',
-    name: 'Fists',
-    description: 'Good old boxing! Fast but short range.',
-    damage: 18,
-    speed: 1.2,
-    range: 40,
-    unlockCondition: null, // always available
-    spriteKey: 'weapon-fists',
-    qteType: 'mash', // quick-time event type
-  },
   sword: {
     id: 'sword',
     name: 'Sword',
     description: 'A trusty blade. Balanced damage and range.',
-    damage: 22,
+    damage: 20,
     speed: 1.0,
     range: 80,
-    unlockCondition: { type: 'runs', count: 3 },
+    level: 1,
     spriteKey: 'weapon-sword',
-    qteType: 'timing', // hit at the right moment
+    qteType: 'timing',
   },
   staff: {
     id: 'staff',
     name: 'Battle Staff',
     description: 'Long reach, sweeping attacks. Type numbers to fight!',
-    damage: 20,
+    damage: 24,
     speed: 0.8,
     range: 120,
-    unlockCondition: { type: 'score', amount: 500 },
+    level: 2,
     spriteKey: 'weapon-staff',
-    qteType: 'sequence', // type number sequence
+    qteType: 'sequence',
   },
   snowball: {
     id: 'snowball',
     name: 'Snowball Cannon',
     description: 'Ranged snowball attacks! Slow but safe.',
-    damage: 20,
+    damage: 28,
     speed: 0.6,
     range: 300,
-    unlockCondition: { type: 'runs', count: 5 },
+    level: 3,
     spriteKey: 'weapon-snowball',
-    qteType: 'aim', // aim at target
+    qteType: 'aim',
+  },
+  axe: {
+    id: 'axe',
+    name: 'Ice Axe',
+    description: 'Heavy hitting ice axe. Devastating power!',
+    damage: 34,
+    speed: 0.5,
+    range: 70,
+    level: 4,
+    spriteKey: 'weapon-axe',
+    qteType: 'mash',
+  },
+  legendary: {
+    id: 'legendary',
+    name: 'Frost Blade',
+    description: 'The legendary Frost Blade. Ultimate power!',
+    damage: 42,
+    speed: 1.2,
+    range: 150,
+    level: 5,
+    spriteKey: 'weapon-legendary',
+    qteType: 'timing',
   },
 };
+
+// Level thresholds - what level you reach based on total runs
+export const LEVEL_THRESHOLDS = [
+  { level: 1, runsRequired: 0 },
+  { level: 2, runsRequired: 3 },
+  { level: 3, runsRequired: 6 },
+  { level: 4, runsRequired: 10 },
+  { level: 5, runsRequired: 15 },
+];
 
 export class WeaponSystem {
   static getWeapon(id) {
@@ -54,29 +74,32 @@ export class WeaponSystem {
     return Object.values(WEAPONS);
   }
 
-  static getUnlockableWeapons(saveData) {
-    return Object.values(WEAPONS).filter((w) => {
-      if (!w.unlockCondition) return false;
-      if (saveData.unlockedWeapons.includes(w.id)) return false;
-      return true;
-    });
+  static getPlayerLevel(totalRuns) {
+    let playerLevel = 1;
+    for (const threshold of LEVEL_THRESHOLDS) {
+      if (totalRuns >= threshold.runsRequired) {
+        playerLevel = threshold.level;
+      }
+    }
+    return playerLevel;
+  }
+
+  static getWeaponsForLevel(playerLevel) {
+    return Object.values(WEAPONS).filter((w) => w.level <= playerLevel);
+  }
+
+  static getNextLevelInfo(playerLevel) {
+    const next = LEVEL_THRESHOLDS.find((t) => t.level === playerLevel + 1);
+    if (!next) return null;
+    const weapon = Object.values(WEAPONS).find((w) => w.level === playerLevel + 1);
+    return { ...next, weapon };
   }
 
   static checkUnlocks(saveData) {
+    const playerLevel = WeaponSystem.getPlayerLevel(saveData.totalRuns);
     const newUnlocks = [];
     for (const weapon of Object.values(WEAPONS)) {
-      if (!weapon.unlockCondition) continue;
-      if (saveData.unlockedWeapons.includes(weapon.id)) continue;
-
-      const cond = weapon.unlockCondition;
-      let unlocked = false;
-      if (cond.type === 'runs' && saveData.totalRuns >= cond.count) {
-        unlocked = true;
-      } else if (cond.type === 'score' && saveData.highScore >= cond.amount) {
-        unlocked = true;
-      }
-
-      if (unlocked) {
+      if (weapon.level <= playerLevel && !saveData.unlockedWeapons.includes(weapon.id)) {
         newUnlocks.push(weapon);
       }
     }
@@ -84,9 +107,8 @@ export class WeaponSystem {
   }
 
   static calculateDamage(weapon, qteScore) {
-    // qteScore is 0.0 to 1.0 based on quick-time event performance
     const baseDamage = weapon.damage;
-    const multiplier = 0.5 + qteScore * 1.0; // 50% to 150% damage
+    const multiplier = 0.5 + qteScore * 1.0;
     return Math.round(baseDamage * multiplier);
   }
 }

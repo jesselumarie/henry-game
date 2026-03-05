@@ -1,7 +1,7 @@
 const SAVE_KEY = 'henry-ski-combat-save';
 
 const DEFAULT_SAVE = {
-  unlockedWeapons: ['fists'],
+  unlockedWeapons: ['sword'],
   highScore: 0,
   totalRuns: 0,
   levelsCompleted: [],

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem.js';
+import { WeaponSystem } from '../systems/WeaponSystem.js';
 import { SoundManager } from '../systems/SoundManager.js';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -100,12 +101,13 @@ export class MainMenuScene extends Phaser.Scene {
       });
     });
 
-    // Stats display
+    // Stats display with level
+    const playerLevel = WeaponSystem.getPlayerLevel(saveData.totalRuns);
     this.add
       .text(
         width / 2,
-        500,
-        `High Score: ${saveData.highScore}  |  Runs: ${saveData.totalRuns}  |  Weapons: ${saveData.unlockedWeapons.length}`,
+        490,
+        `Level ${playerLevel}  |  High Score: ${saveData.highScore}  |  Runs: ${saveData.totalRuns}  |  Weapons: ${saveData.unlockedWeapons.length}`,
         {
           fontSize: '12px',
           fontFamily: 'Courier New',
@@ -113,6 +115,23 @@ export class MainMenuScene extends Phaser.Scene {
         }
       )
       .setOrigin(0.5);
+
+    const nextInfo = WeaponSystem.getNextLevelInfo(playerLevel);
+    if (nextInfo) {
+      const runsNeeded = nextInfo.runsRequired - saveData.totalRuns;
+      this.add
+        .text(
+          width / 2,
+          510,
+          `${runsNeeded} more run${runsNeeded !== 1 ? 's' : ''} to Level ${nextInfo.level} (${nextInfo.weapon.name})`,
+          {
+            fontSize: '10px',
+            fontFamily: 'Courier New',
+            color: '#667799',
+          }
+        )
+        .setOrigin(0.5);
+    }
 
     // Falling snow effect
     this.snowParticles = [];
