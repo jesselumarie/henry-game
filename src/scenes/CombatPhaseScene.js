@@ -395,73 +395,121 @@ export class CombatPhaseScene extends Phaser.Scene {
   }
 
   runSequenceQTE() {
-    // Mash space bar to fill the meter
-    const totalPresses = 8;
-    let presses = 0;
+    // Type the number sequence to attack with the Battle Staff
+    const sequenceLength = 6;
+    const sequence = [];
+    for (let i = 0; i < sequenceLength; i++) {
+      sequence.push(Phaser.Math.Between(1, 9));
+    }
+    let currentIndex = 0;
+    let mistakes = 0;
 
-    const bg = this.add.rectangle(0, 0, 350, 120, 0x000000, 0.8);
+    const bg = this.add.rectangle(0, 0, 400, 150, 0x000000, 0.8);
     const label = this.add
-      .text(0, -40, 'MASH SPACE!', {
+      .text(0, -55, 'TYPE THE NUMBERS!', {
         fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#ffee00',
       })
       .setOrigin(0.5);
 
-    // Progress bar background
-    const barWidth = 260;
-    const barHeight = 24;
-    const barBg = this.add.rectangle(0, 0, barWidth, barHeight, 0x333333);
-    const barFill = this.add.rectangle(
-      -barWidth / 2,
-      0,
-      0,
-      barHeight,
-      0x00ff88
-    ).setOrigin(0, 0.5);
+    // Display the number sequence as individual digit texts for coloring
+    const digitTexts = [];
+    const totalWidth = sequenceLength * 36 - 12; // spacing between digits
+    const startX = -totalWidth / 2 + 12;
+    for (let i = 0; i < sequenceLength; i++) {
+      const digitText = this.add
+        .text(startX + i * 36, -18, `${sequence[i]}`, {
+          fontSize: '32px',
+          fontFamily: 'Courier New',
+          color: '#888888',
+        })
+        .setOrigin(0.5);
+      digitTexts.push(digitText);
+    }
+    // Highlight the first digit as active
+    digitTexts[0].setColor('#ffffff');
 
-    const counterText = this.add
-      .text(0, 0, `${presses}/${totalPresses}`, {
+    const feedbackText = this.add
+      .text(0, 18, '', {
         fontSize: '14px',
         fontFamily: 'Courier New',
-        color: '#ffffff',
+        color: '#ff4444',
       })
       .setOrigin(0.5);
 
     const timerText = this.add
-      .text(0, 35, '3.0s', {
+      .text(0, 45, '5.0s', {
         fontSize: '14px',
         fontFamily: 'Courier New',
         color: '#aaaaaa',
       })
       .setOrigin(0.5);
 
-    this.qteContainer.add([bg, label, barBg, barFill, counterText, timerText]);
+    this.qteContainer.add([bg, label, ...digitTexts, feedbackText, timerText]);
 
     const startTime = Date.now();
-    const duration = 3000;
+    const duration = 5000;
 
-    const spaceKey = this.input.keyboard.addKey(
-      Phaser.Input.Keyboard.KeyCodes.SPACE
-    );
+    // Listen for number keys 1-9
+    const numberKeys = [];
+    for (let n = 1; n <= 9; n++) {
+      numberKeys.push(
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes['ZERO'] + n)
+      );
+    }
 
-    const handler = () => {
-      if (presses >= totalPresses) return;
-      presses++;
-      const progress = presses / totalPresses;
-      barFill.width = barWidth * progress;
-      counterText.setText(`${presses}/${totalPresses}`);
+    const handler = (event) => {
+      if (currentIndex >= sequenceLength) return;
 
-      if (presses >= totalPresses) {
-        spaceKey.off('down', handler);
-        timer.remove();
-        const elapsed = Date.now() - startTime;
-        const score = Math.max(0.3, 1 - elapsed / duration);
-        this.finishQTE(score);
+      // Get pressed number (key codes: ONE=49, TWO=50, ..., NINE=57)
+      const pressedNumber = event.keyCode - Phaser.Input.Keyboard.KeyCodes.ZERO;
+      if (pressedNumber < 1 || pressedNumber > 9) return;
+
+      if (pressedNumber === sequence[currentIndex]) {
+        // Correct!
+        digitTexts[currentIndex].setColor('#00ff88');
+        SoundManager.qteMash();
+        currentIndex++;
+
+        // Highlight next digit
+        if (currentIndex < sequenceLength) {
+          digitTexts[currentIndex].setColor('#ffffff');
+        }
+
+        if (currentIndex >= sequenceLength) {
+          // All correct - done!
+          cleanup();
+          const elapsed = Date.now() - startTime;
+          // Score based on speed and accuracy
+          const timeBonus = Math.max(0.3, 1 - elapsed / duration);
+          const accuracyPenalty = mistakes * 0.1;
+          const score = Math.max(0.1, timeBonus - accuracyPenalty);
+          feedbackText.setText('COMPLETE!').setColor('#00ff88');
+          this.time.delayedCall(300, () => this.finishQTE(score));
+        }
+      } else {
+        // Wrong key!
+        mistakes++;
+        digitTexts[currentIndex].setColor('#ff4444');
+        feedbackText.setText(`MISS! (${mistakes})`);
+        SoundManager.qteFail();
+        // Flash back to white after a moment
+        this.time.delayedCall(200, () => {
+          if (currentIndex < sequenceLength) {
+            digitTexts[currentIndex].setColor('#ffffff');
+          }
+        });
       }
     };
 
-    spaceKey.on('down', handler);
+    this.input.keyboard.on('keydown', handler);
+
+    const cleanup = () => {
+      timer.remove();
+      this.input.keyboard.off('keydown', handler);
+      numberKeys.forEach((k) => this.input.keyboard.removeKey(k));
+    };
 
     const timer = this.time.addEvent({
       delay: 50,
@@ -472,10 +520,10 @@ export class CombatPhaseScene extends Phaser.Scene {
         timerText.setText(`${remaining.toFixed(1)}s`);
 
         if (elapsed >= duration) {
-          timer.remove();
-          spaceKey.off('down', handler);
-          const score = presses / totalPresses;
-          this.finishQTE(score * 0.5);
+          cleanup();
+          // Partial score based on how many digits were entered
+          const score = (currentIndex / sequenceLength) * 0.5;
+          this.finishQTE(score);
         }
       },
     });
