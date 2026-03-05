@@ -155,6 +155,23 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(6, 9, 4, 2);
     });
 
+    // Trap hole — dark pit in the snow the player must jump over
+    this.createPixelSprite('trap-hole', 32, 32, (ctx) => {
+      // Snow rim around the hole
+      ctx.fillStyle = '#ccddee';
+      ctx.fillRect(0, 8, 32, 4);
+      ctx.fillRect(0, 24, 32, 4);
+      // Dark pit interior
+      ctx.fillStyle = '#111122';
+      ctx.fillRect(2, 12, 28, 12);
+      // Darker center for depth effect
+      ctx.fillStyle = '#000011';
+      ctx.fillRect(6, 14, 20, 8);
+      // Subtle highlight on top edge
+      ctx.fillStyle = '#ddeeff';
+      ctx.fillRect(2, 10, 28, 2);
+    });
+
     // Ramp
     this.createPixelSprite('ramp', 32, 32, (ctx) => {
       ctx.fillStyle = '#ccaa66';

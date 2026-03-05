@@ -182,6 +182,12 @@ export const SoundManager = {
     playTone(1040, 0.2, 'square', 0.4, 0.3);
   },
 
+  trapHoleFall() {
+    // Descending pitch = falling into a hole
+    playSweep(500, 100, 0.4, 'sine', 0.35);
+    playNoise(0.2, 0.3, 0.15);
+  },
+
   finishLine() {
     playTone(520, 0.15, 'square', 0.4);
     playTone(660, 0.15, 'square', 0.4, 0.15);

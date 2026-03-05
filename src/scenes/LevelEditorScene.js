@@ -9,6 +9,7 @@ const PLACEABLE_OBJECTS = [
   { type: 'collectible_coin', name: 'Coin', category: 'ski' },
   { type: 'collectible_star', name: 'Star', category: 'ski' },
   { type: 'ramp', name: 'Ramp', category: 'ski' },
+  { type: 'trap_hole', name: 'Trap Hole', category: 'ski' },
   { type: 'enemy_basic', name: 'Basic Enemy', category: 'combat' },
   { type: 'enemy_strong', name: 'Strong Enemy', category: 'combat' },
   { type: 'enemy_boss', name: 'Boss', category: 'combat' },
