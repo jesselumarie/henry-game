@@ -21,7 +21,7 @@ export class CombatPhaseScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.weapon = data?.weapon || WeaponSystem.getWeapon('fists');
+    this.weapon = data?.weapon || WeaponSystem.getWeapon('sword');
     this.skiResults = data?.skiResults || { score: 0, coins: 0, stars: 0, tricks: 0 };
     this.bonuses = data?.bonuses || { bonusHp: 0, bonusDamage: 0, bonusCrit: 0 };
 
@@ -59,6 +59,21 @@ export class CombatPhaseScene extends Phaser.Scene {
       .image(150, height - 150, playerKey)
       .setScale(3)
       .setDepth(5);
+
+    // Flashing shield around player
+    this.shieldGraphic = this.add.ellipse(150, height - 150, 70, 80, 0x44aaff, 0.25)
+      .setDepth(4)
+      .setStrokeStyle(2, 0x66ccff, 0.8);
+    this.tweens.add({
+      targets: this.shieldGraphic,
+      alpha: { from: 0.15, to: 0.5 },
+      scaleX: { from: 0.95, to: 1.1 },
+      scaleY: { from: 0.95, to: 1.1 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     // Weapon display
     this.add.image(150, height - 200, this.weapon.spriteKey).setScale(2);
@@ -598,6 +613,13 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.setButtonsEnabled(false);
     this.isDefending = true;
     SoundManager.defend();
+
+    // Shield flashes bright when defending
+    if (this.shieldGraphic) {
+      this.shieldGraphic.setFillStyle(0x44aaff, 0.6);
+      this.shieldGraphic.setStrokeStyle(3, 0xffffff, 1);
+    }
+
     this.runDefendQTE();
   }
 
@@ -702,6 +724,12 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.logText.setText(`${qualityText} Block ${reduction}%!${healText}`);
     if (score > 0.7) {
       SoundManager.qteSuccess();
+    }
+
+    // Reset shield to normal glow
+    if (this.shieldGraphic) {
+      this.shieldGraphic.setFillStyle(0x44aaff, 0.25);
+      this.shieldGraphic.setStrokeStyle(2, 0x66ccff, 0.8);
     }
 
     this.time.delayedCall(800, () => {

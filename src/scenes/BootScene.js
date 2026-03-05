@@ -217,6 +217,42 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(6, 6, 3, 3);
     });
 
+    // Ice Axe weapon
+    this.createPixelSprite('weapon-axe', 16, 16, (ctx) => {
+      // Handle
+      ctx.fillStyle = '#885522';
+      ctx.fillRect(7, 6, 2, 10);
+      // Axe head
+      ctx.fillStyle = '#88ccff';
+      ctx.fillRect(2, 2, 12, 6);
+      ctx.fillStyle = '#66aadd';
+      ctx.fillRect(4, 0, 8, 2);
+      // Ice shine
+      ctx.fillStyle = '#bbddff';
+      ctx.fillRect(5, 3, 3, 2);
+    });
+
+    // Legendary Frost Blade
+    this.createPixelSprite('weapon-legendary', 16, 16, (ctx) => {
+      // Blade - icy blue
+      ctx.fillStyle = '#66ddff';
+      ctx.fillRect(6, 0, 4, 9);
+      ctx.fillStyle = '#44bbee';
+      ctx.fillRect(5, 1, 6, 7);
+      // Glow
+      ctx.fillStyle = '#aaeeff';
+      ctx.fillRect(7, 1, 2, 5);
+      // Guard
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillRect(2, 9, 12, 2);
+      // Handle
+      ctx.fillStyle = '#663399';
+      ctx.fillRect(6, 11, 4, 5);
+      // Gem in guard
+      ctx.fillStyle = '#ff4488';
+      ctx.fillRect(7, 9, 2, 2);
+    });
+
     // Placeholder for anything missing
     this.createPixelSprite('placeholder', 32, 32, (ctx) => {
       ctx.fillStyle = '#ff00ff';
