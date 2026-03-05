@@ -42,8 +42,8 @@ export const DEFAULT_COMBAT_LEVEL = {
   width: 800,
   height: 400,
   enemies: [
-    { type: 'enemy_basic', x: 500, y: 300, hp: 30 },
-    { type: 'enemy_basic', x: 600, y: 200, hp: 30 },
+    { type: 'enemy_basic', x: 500, y: 300, hp: 20 },
+    { type: 'enemy_basic', x: 600, y: 200, hp: 20 },
     { type: 'enemy_strong', x: 650, y: 350, hp: 60 },
   ],
 };
