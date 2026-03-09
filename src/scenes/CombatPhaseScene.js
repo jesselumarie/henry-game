@@ -24,6 +24,7 @@ export class CombatPhaseScene extends Phaser.Scene {
     this.weapon = data?.weapon || WeaponSystem.getWeapon('sword');
     this.skiResults = data?.skiResults || { score: 0, coins: 0, stars: 0, tricks: 0 };
     this.bonuses = data?.bonuses || { bonusHp: 0, bonusDamage: 0, bonusCrit: 0 };
+    this.playerLevel = data?.playerLevel || 1;
 
     this.potions = data?.skiResults?.potions || 0;
     this.playerHp = 100 + this.bonuses.bonusHp;
@@ -45,8 +46,9 @@ export class CombatPhaseScene extends Phaser.Scene {
       .setOrigin(0, 0);
 
     // Arena label
+    const levelSuffix = this.playerLevel > 1 ? ` (LV ${this.playerLevel})` : '';
     this.add
-      .text(width / 2, 20, level.name.toUpperCase(), {
+      .text(width / 2, 20, level.name.toUpperCase() + levelSuffix, {
         fontSize: '16px',
         fontFamily: 'Courier New',
         color: '#aabbcc',
@@ -85,8 +87,18 @@ export class CombatPhaseScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Enemies
-    this.enemies = level.enemies.map((enemyData, i) => {
+    // Enemies — scale HP and count with player level
+    const hpScale = 1 + (this.playerLevel - 1) * 0.4;
+    const extraEnemies = this.playerLevel >= 3 ? [
+      { type: 'enemy_basic', x: 750, y: 250, hp: 40 },
+    ] : [];
+    if (this.playerLevel >= 5) {
+      extraEnemies.push({ type: 'enemy_strong', x: 450, y: 250, hp: 100 });
+    }
+    const allEnemyData = [...level.enemies, ...extraEnemies];
+
+    this.enemies = allEnemyData.map((enemyData, i) => {
+      const scaledHp = Math.round(enemyData.hp * hpScale);
       const textureKey = SpriteManager.getTextureKey(enemyData.type);
       const sprite = this.add
         .image(500 + i * 100, height - 150, textureKey)
@@ -96,8 +108,8 @@ export class CombatPhaseScene extends Phaser.Scene {
       return {
         ...enemyData,
         sprite,
-        currentHp: enemyData.hp,
-        maxHp: enemyData.hp,
+        currentHp: scaledHp,
+        maxHp: scaledHp,
         alive: true,
       };
     });
@@ -824,9 +836,10 @@ export class CombatPhaseScene extends Phaser.Scene {
 
     let totalDamage = 0;
     let rawDamage = 0;
+    const dmgScale = 1 + (this.playerLevel - 1) * 0.25;
     aliveEnemies.forEach((enemy) => {
-      let dmg = Phaser.Math.Between(5, 15);
-      if (enemy.type === 'enemy_strong') dmg = Phaser.Math.Between(10, 25);
+      let dmg = Math.round(Phaser.Math.Between(8, 18) * dmgScale);
+      if (enemy.type === 'enemy_strong') dmg = Math.round(Phaser.Math.Between(14, 28) * dmgScale);
       rawDamage += dmg;
       if (this.isDefending) dmg = Math.round(dmg * this.defendMultiplier);
       totalDamage += dmg;

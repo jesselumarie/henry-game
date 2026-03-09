@@ -30,7 +30,8 @@ export class TransitionScene extends Phaser.Scene {
     const newUnlocks = WeaponSystem.checkUnlocks(updatedSave);
     newUnlocks.forEach((w) => SaveSystem.unlockWeapon(w.id));
 
-    const playerLevel = WeaponSystem.getPlayerLevel(updatedSave.totalRuns);
+    this.playerLevel = WeaponSystem.getPlayerLevel(updatedSave.totalRuns);
+    const playerLevel = this.playerLevel;
 
     // Background
     this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
@@ -248,6 +249,7 @@ export class TransitionScene extends Phaser.Scene {
       weapon,
       skiResults,
       bonuses: this.combatBonuses,
+      playerLevel: this.playerLevel,
     });
   }
 }
