@@ -337,9 +337,9 @@ export class LevelEditorScene extends Phaser.Scene {
 
     // Add HP for enemies
     if (this.selectedTool.startsWith('enemy_')) {
-      if (this.selectedTool === 'enemy_basic') newObj.hp = 30;
-      else if (this.selectedTool === 'enemy_strong') newObj.hp = 60;
-      else if (this.selectedTool === 'enemy_boss') newObj.hp = 120;
+      if (this.selectedTool === 'enemy_basic') newObj.hp = 20;
+      else if (this.selectedTool === 'enemy_strong') newObj.hp = 50;
+      else if (this.selectedTool === 'enemy_boss') newObj.hp = 80;
     }
 
     this.placedObjects.push(newObj);
