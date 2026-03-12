@@ -90,10 +90,10 @@ export class CombatPhaseScene extends Phaser.Scene {
     // Enemies — scale HP and count with player level
     const hpScale = 1 + (this.playerLevel - 1) * 0.4;
     const extraEnemies = this.playerLevel >= 3 ? [
-      { type: 'enemy_basic', x: 750, y: 250, hp: 40 },
+      { type: 'enemy_basic', x: 750, y: 250, hp: 20 },
     ] : [];
     if (this.playerLevel >= 5) {
-      extraEnemies.push({ type: 'enemy_strong', x: 450, y: 250, hp: 100 });
+      extraEnemies.push({ type: 'enemy_strong', x: 450, y: 250, hp: 50 });
     }
     const allEnemyData = [...level.enemies, ...extraEnemies];
 
